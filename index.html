@@ -3,7 +3,14 @@
   瞳 Hitomi  Version 1.0  (single-file recorder: Setup > Record > Mix > Export)
   VERSION 1.0 -- first numbered release. This file is the build that was developed as 'v3.0 R7.25' (the old v3.0 / R-numbers were an internal working series and are not version numbers).
   From here on the app is numbered 1.0, 1.1 ... Every entry below that starts with 'R' is the history of that working series, kept so each decision can still be traced.
-  Build ID: R7.25.  The program itself is unchanged by the renumbering: only this header comment differs from R7.25.
+  Build 2 (internal id R7.26). Version 1.0 stays 1.0; this build adds, on top of the first Version 1.0 build (R7.25):
+  (1) Setup page: 'Version 1.0' at the bottom.
+  (2) Export > Quality: 'Small' and 'Standard' are always the same pixel size and differ only in bit rate, which a player cannot read; the chips now say 'Smallest file' / 'More detail' and a line says how much
+      smaller the file is and that a little detail is lost. The Mbps figure stays in the tooltip.
+  (3) Hints that existed only as hover tooltips (invisible on a phone) are now on screen: what each aspect ratio is for (Setup > Layout heading), what Low cut is and what its button steps through (Mix > Sound),
+      a visible 'Reset volume & pan' button (Mix > Sound; the double-click reset only works with a mouse, a double tap on a phone does not reset), and how to clear the red clip light on the Record level bar (it used to keep saying 'Will clip, step back' after the player had moved back).
+  (4) Phone landscape: Setup, Mix and Export were drawn 54 px too far left, under the tab strip on the left edge (only Record left room for it); they now start to its right.
+  No recording, sync, mix or export logic changed.
   R4.x clean-up series, from R3.5: dead code, Looper, tuner, producer lock and unused UI removed;
   English strings completed; record-time readout restored; light-theme contrast fixed;
   trailing patch blocks moved inside <body>; 254 CSS declarations that a later rule on the same selector always overrides removed
@@ -1195,6 +1202,7 @@ body.aoMode #flip{visibility:hidden}
     </section>
     </div></details>
   <button id="toRec" class="cta"><span id="toRecT" data-i18n-key="action.startRecording">開始錄音</span><svg class="ic"><use href="#i-next"/></svg></button>
+  <p class="verNote" id="verNote">瞳 · 版本 1.0</p>
 </section>
 <section id="p-rec" class="tp">
   <div class="recTools" id="impRow">
@@ -1256,7 +1264,7 @@ body.aoMode #flip{visibility:hidden}
       <option value="wav">音訊 WAV（無損，即時完成）</option>
       <option value="m4a">音訊 M4A（AAC，檔案細）</option>
       <option value="weba">音訊 WebM（Opus）</option></select>
-    <div class="xRow" id="xqrow"><span class="xLab" id="xqLab"></span><div id="xqCards" class="xChips" role="group" aria-label="影片畫質"></div><select id="xq" aria-label="影片畫質" hidden><option value="std">標準</option><option value="hi">高畫質</option><option value="fhd">1080p</option><option value="lo">省空間</option></select></div>
+    <div class="xRow" id="xqrow"><span class="xLab" id="xqLab"></span><div id="xqCards" class="xChips" role="group" aria-label="影片畫質"></div><p class="xNote" id="xqNote" hidden></p><select id="xq" aria-label="影片畫質" hidden><option value="std">標準</option><option value="hi">高畫質</option><option value="fhd">1080p</option><option value="lo">省空間</option></select></div>
     <div class="xRow" id="xbrow" hidden><span class="xLab" id="xbLab"></span><div id="xbCards" class="xChips" role="group" aria-label="位元深度"></div><select id="xbit" aria-label="位元深度" hidden><option value="24">24-bit</option><option value="16">16-bit</option></select></div>
     <div class="xRow" id="xnrow" hidden><span class="xLab" id="xnLab"></span><div id="xnCards" class="xChips" role="group" aria-label="格名標籤"></div><select id="xlab" aria-label="格名標籤" hidden><option value="on">on</option><option value="off">off</option></select></div>
     <div class="xRow" id="xlrow"><span class="xLab" id="xlLab"></span><div id="xlCards" class="xChips" role="group" aria-label="匯出響度"></div><select id="xloud" aria-label="匯出響度" hidden><option value="lufs">發佈用（約 −14 LUFS）</option><option value="none">保持原音量</option><option value="peak">最大音量（峰值 −1 dB）</option></select><p class="xNote" id="xlNote"></p></div>
@@ -2001,6 +2009,7 @@ let micId='',rv={p:'無',amt:.4},camFace='user',audioOnly=false,clickT=null,an=n
 const ic=n=>'<svg class="ic" aria-hidden="true"><use href="#i-'+n+'"/></svg>';
 const ratIc=r=>{const [a,b]=r.split(':').map(Number),k=12/Math.max(a,b),w=a*k,h=b*k;
   return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="'+(12-w/2)+'" y="'+(12-h/2)+'" width="'+w+'" height="'+h+'" rx="2.2"/></svg>'};
+const RAT_DESC=()=>({'1:1':LL('方形，適合 IG／FB 貼文','Square - feed posts'),'4:5':LL('直向貼文（IG／FB）','Portrait post (Instagram / Facebook)'),'9:16':LL('全螢幕直向：Reels／Shorts','Full-screen vertical: Reels / Shorts'),'16:9':LL('橫向：YouTube／電視','Landscape: YouTube / TV')});   /* R1.0b: these names were only in a hover tooltip */
 const RAT_LAB=()=>({'1:1':['1:1',LL('方形','Square')],'4:5':['4:5',LL('貼文','Post')],'9:16':['9:16',LL('Reels','Reels')],'16:9':['16:9',LL('橫向','Landscape')]});
 /* 版型示意：一眼睇到格點排列 */
 const layIc=v=>{
@@ -2657,7 +2666,7 @@ function layChips(){
     el.appendChild(b)});
   const h=$('#layHint');if(h)h.textContent=N<3?LL('≥3 格可選特殊版型','≥3 cells for special layouts'):(lay==='hero'?LL('第 1 格較大','Cell 1 larger'):lay==='duo'?LL('前 2 格較大','First 2 larger'):lay==='fill'?LL('逐列填滿','Fill by row'):LL('依比例自動','Auto by ratio'));
   const nh=$('#nHint');if(nh)nh.textContent=N+'/36';
-  const rh=$('#rHint');if(rh){const L=RAT_LAB()[R];rh.textContent=L?L[1]:''}
+  const rh=$('#rHint');if(rh){const L=RAT_DESC()[R];rh.textContent=L||''}
   drawPrev();quickN();
   {const rb=$('#rBtns');if(rb)[...rb.children].forEach((b,i)=>{const k=Object.keys(RATIOS)[i],L=RAT_LAB()[k];if(L)b.title=L[0]+' · '+L[1]})}
 }
@@ -2829,7 +2838,8 @@ function renderTracks(){
         </div>
         </div>
         <div class="pn pn-snd">
-          <button type="button" class="hpBtn" data-hp="1" title="${LL('低切：濾走低頻雜音（手機麥克風常見）','Low cut: removes low rumble')}"></button>
+          <div class="sndBtns"><button type="button" class="hpBtn" data-hp="1" title="${LL('低切：濾走低頻雜音（手機麥克風常見）','Low cut: removes low rumble')}"></button><button type="button" class="hpBtn" data-rstsnd="1">${LL('音量與聲道歸零','Reset volume & pan')}</button></div>
+          <p class="hint hpHint">${LL('低切：濾走低頻的轟隆聲（例如風聲、手持碰撞聲）。點一下依次切換 80／120／200 Hz／關。','Low cut: removes low rumble (wind, handling noise). Tap to step through 80 / 120 / 200 Hz / off.')}</p>
           <div class="vpRow"><label class="vp vpV"><span class="vpN">${LL('音量','Volume')}</span><input type="range" min="-60" max="6" step="0.5" value="${toDb(c.vol)}" data-k="vol" title="${LL('雙擊歸零','Double-click to reset')}"><span class="vpVal">${dbLab(c.vol)}</span></label></div>
           <div class="vpPan"><label class="vp vpP"><span class="vpN">${LL('聲道','Pan')}</span><input type="range" min="-100" max="100" step="1" value="${Math.round((c.pan||0)*100)}" data-k2="pan" aria-label="${LL('聲道（左右）','Pan (left / right)')}" title="${LL('雙擊歸中','Double-click to center')}"><span class="vpVal"></span></label></div>
           <details class="eqD"><summary><span>EQ</span><em class="eqS"></em></summary>
@@ -2866,6 +2876,7 @@ if(!CF){const grP=t.querySelector('.grP');if(grP){grP.querySelectorAll('input[da
       offn.onkeydown=e=>{if(e.key==='Enter')offn.blur()};
       offn.ondblclick=()=>{setOff(i,0);offn.value=0;offDone()}}
     t.querySelectorAll('[data-n]').forEach(b=>b.onclick=()=>{setOff(i,(c.off||0)+(+b.dataset.n));offDone()});
+    {const rb=t.querySelector('[data-rstsnd]');if(rb)rb.onclick=()=>{t.querySelectorAll('input[data-k=vol],input[data-k2=pan]').forEach(i=>i.dispatchEvent(new MouseEvent('dblclick')))}}   /* R1.0b: reuses the double-click reset of the two sliders */
     {const hb=t.querySelector('[data-hp]');if(hb){const HP=[0,80,120,200],lab=()=>{const v=c.hp||0;hb.textContent=LL('低切','Low cut')+' '+(v?v+' Hz':LL('關','Off'));hb.classList.toggle('on',v>0)};lab();
       hb.onclick=()=>{const v=c.hp||0;const nx=HP.find(x=>x>v);c.hp=nx===undefined?0:nx;lab();applyMix()}}}
     t.querySelectorAll('input[data-k2]').forEach(inp=>{const k=inp.dataset.k2,sp=inp.nextElementSibling&&inp.nextElementSibling.tagName==='SPAN'?inp.nextElementSibling:null;
@@ -4159,7 +4170,15 @@ function xInit(){
       qSel=(q==='fhd'&&hideF)?'hi':q;
     all.forEach(([v,lab])=>{if(v==='fhd'&&hideF)return;
       const dup=all.some(([w])=>w!==v&&!(w==='fhd'&&hideF)&&dims(w)===dims(v));   /* same pixel size as another chip: show the bitrate so they can be told apart */
-      qb.appendChild(mk('button',qSel===v?'on':'','<b>'+lab+'</b><small>'+dims(v)+'</small>'+(dup?'<small>'+(BR[v]/1e6)+' Mbps</small>':'')+(n?'<small>≈'+mb(est(f,v,d))+'</small>':''),()=>{xq.value=v;fire(xq);upd()}))})}
+      const grp=all.filter(([w])=>!(w==='fhd'&&hideF)&&dims(w)===dims(v)).map(([w])=>BR[w]),   /* R1.0b: same pixel size -> say in words which one is smaller / has more detail (the Mbps stays in the tooltip) */
+        word=!dup?'':BR[v]===Math.min(...grp)?LL('檔案最細','Smallest file'):BR[v]===Math.max(...grp)?LL('細節較多','More detail'):(BR[v]/1e6)+' Mbps';
+      const bt=mk('button',qSel===v?'on':'','<b>'+lab+'</b><small>'+dims(v)+'</small>'+(dup?'<small>'+word+'</small>':'')+(n?'<small>≈'+mb(est(f,v,d))+'</small>':''),()=>{xq.value=v;fire(xq);upd()});
+      bt.title=lab+' · '+dims(v)+' · '+(BR[v]/1e6)+' Mbps';qb.appendChild(bt)});
+    {const nt=$('#xqNote'),grp=all.filter(([w])=>!(w==='fhd'&&hideF)),by={};grp.forEach(([w,l])=>{(by[dims(w)]=by[dims(w)]||[]).push([w,l])});
+      const d2=Object.values(by).find(g=>g.length>1);
+      if(nt){if(vid&&d2){const lo=d2.reduce((a,b)=>BR[a[0]]<=BR[b[0]]?a:b),hi=d2.reduce((a,b)=>BR[a[0]]>=BR[b[0]]?a:b),pc=Math.round((1-BR[lo[0]]/BR[hi[0]])*10)*10;
+          nt.textContent=LL('「'+lo[1]+'」和「'+hi[1]+'」畫面大小一樣，分別只在細節：「'+lo[1]+'」預計檔案約細 '+pc+'%，細節會少一些。','“'+lo[1]+'” and “'+hi[1]+'” have the same picture size. The difference is detail: “'+lo[1]+'” is expected to make the file about '+pc+'% smaller and keeps a little less detail.');nt.hidden=false}
+        else{nt.textContent='';nt.hidden=true}}}}
     /* 位元深度（只有 WAV） */
     $('#xbrow').hidden=f!=='wav';$('#xbLab').textContent=LL('位元深度','Bit depth');
     {const bb=$('#xbCards');bb.innerHTML='';
@@ -4480,6 +4499,7 @@ Object.assign(EN,{'拍':'Beat',
 '所有專案：複製、匯出、匯入':'All projects: duplicate, export, import',
 '速度':'Tempo',
 '混音工具':'Mix tools'});
+Object.assign(EN,{'瞳 · 版本 1.0':'Hitomi · Version 1.0'});
 Object.assign(EN,{'先設好歌曲的速度（BPM），每一格都跟著這個拍子機錄。':'Set the song\'s tempo (BPM) first. Every cell is recorded to this click.'});
 const ENX=k=>{let m;if(m=/^(\d+) 小節$/.exec(k))return m[1]+(m[1]==='1'?' bar':' bars');if(m=/^(\d+) 圈$/.exec(k))return m[1]+(m[1]==='1'?' loop':' loops');return null};
 const I18N={
@@ -4666,7 +4686,8 @@ addEventListener('pointerdown',e=>{
       else if(v>-6)lv='hot';
       else if(v>=-18)lv='ok';
       else lv='low';
-      const T={wait:['等待聲音','No signal','Waiting for sound'],clip:['會爆，請退後','Will clip','Will clip - step back'],hot:['偏大，請退後一點','Too loud','Too loud - step back a little'],ok:['音量 OK','Level OK','Level OK'],low:['偏小聲，可再近一點','Too quiet','Too quiet - move slightly closer']}[lv];
+      let T={wait:['等待聲音','No signal','Waiting for sound'],clip:['會爆，請退後','Will clip','Will clip - step back'],hot:['偏大，請退後一點','Too loud','Too loud - step back a little'],ok:['音量 OK','Level OK','Level OK'],low:['偏小聲，可再近一點','Too quiet','Too quiet - move slightly closer']}[lv];
+      if(lv==='clip'&&v<-1)T=[('曾爆音·點清除'),'Clipped · tap','Clipped earlier - tap the meter to clear'];   /* R1.0b: latched light only (the level is fine now): say so and how to clear it */
       meter.setAttribute('data-lv',lv);
       meter.setAttribute('data-level',LL(T[0],T[1]));
       meter.title=LL(T[0],T[2])+LL(' · 點一下清除過載燈',' · tap to clear the clip light');
@@ -5323,6 +5344,18 @@ html body #rtimer[hidden]{display:none!important}
 #refPanel .refHead span{padding:0 9px;line-height:1.25;border:1px solid var(--bd);border-radius:999px;background:var(--bg);font-weight:700;color:var(--fg)}   /* same height as before: the strip must not grow (the status line above the Record button has 2-5 px to spare on short phones) */
 .offHint{margin:2px 0 6px;text-align:center}
 .tempoHint{margin:2px 0 8px}
+</style>
+<style id="hitomi-v1-0b">
+/* Version 1.0, second build (CSS only) */
+.verNote{margin:6px 0 0;text-align:center;font-size:.72rem;font-weight:700;color:var(--mu);letter-spacing:.04em}
+@media (min-width:900px),(orientation:landscape) and (max-height:500px){#p-setup>#verNote{grid-column:1/-1}}
+#rHint{text-align:right}
+.hpHint{margin:2px 0 4px}
+.sndBtns{display:flex;flex-wrap:wrap;gap:8px}
+body[data-tab=rec] #meter[data-lv=clip][data-level^="曾"]::before,body[data-tab=rec] #meter[data-lv=clip][data-level^="Clipped"]::before{max-width:none}
+@media (max-width:359px){body[data-tab=rec] #meter[data-level]::before{max-width:6.4em}}
+/* Phone landscape: the tab bar is a 66 px strip on the left, and only the Record page left room for it (padding-left 76 px). Setup, Mix and Export kept 12 px, so the first 54 px of every card was hidden under the strip (found by the layout test; present since R7.x). */
+@media (orientation:landscape) and (max-height:500px){html body main{padding-left:calc(76px + env(safe-area-inset-left,0px))}}
 </style>
 </body>
 </html>
