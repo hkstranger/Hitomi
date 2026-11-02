@@ -5,9 +5,10 @@
   From here on the app is numbered 1.0, 1.1 ... Every entry below that starts with 'R' is the history of that working series, kept so each decision can still be traced.
   Build 3 (internal id R7.27). Version 1.0 stays 1.0; this build changes how the app lines cells up:
   (1) Auto-align uses a spectral onset feature (short FFT, 34 narrow bands, rising levels only) instead of loudness only. In a synthetic test with legato parts (30 ms pitch glide, with and without a loudness dip, down to 5 dB noise) the old feature accepted 0-1 of 8 and, with the +-150 ms window, placed 3 of 4 accepted cells wrong; the new one accepted 8 of 8 with a median error of 2 ms. Staccato material is unchanged (8 of 8, ~1 ms). Truly unrelated rhythms are still refused (0 of 16). The acceptance limit moved from 0.30 to 0.35 (same rhythm 0.40-0.81, unrelated 0.08-0.32 in 60 synthetic pairs).
-  (2) Two takes that were both recorded to the click get a gentle preference for staying close to where they are (the far-away peaks that sit exactly one click subdivision away are the usual false match).
+  (2) Two takes that were both recorded to the click get a gentle preference for staying close to where they are.
   (3) Setup > Headphone sync: the two sliders (5 ms steps) now have a number box (1 ms steps, -300 to +300).
   (4) Mix > Timing: -1 / +1 ms buttons next to -5 / +5 / -20 / +20.
+  (5) Record and Mix show the preview at the same size and position (see the hitomi-r7-27-same-preview style block).
   Real recordings have not been measured; the numbers above are from generated test sounds.
   Build 2 (internal id R7.26). Version 1.0 stays 1.0; this build adds, on top of the first Version 1.0 build (R7.25):
   (1) Setup page: 'Version 1.0' at the bottom.
@@ -5413,6 +5414,28 @@ body[data-tab=rec] #meter[data-lv=clip][data-level^="曾"]::before,body[data-tab
 @media (max-width:359px){body[data-tab=rec] #meter[data-level]::before{max-width:6.4em}}
 /* Phone landscape: the tab bar is a 66 px strip on the left, and only the Record page left room for it (padding-left 76 px). Setup, Mix and Export kept 12 px, so the first 54 px of every card was hidden under the strip (found by the layout test; present since R7.x). */
 @media (orientation:landscape) and (max-height:500px){html body main{padding-left:calc(76px + env(safe-area-inset-left,0px))}}
+</style>
+<style id="hitomi-r7-27-same-preview">
+/* R7.27 (CSS only): the Record and Mix previews are the same size and in the same place.
+   Before, each page had its own height budget (Record leaves room for the level bar, status line and red button under the preview; Mix had its own, larger one), so the preview changed
+   size every time you switched tab: on a 360x640 phone 1:1 was 304 px on Record and 348 px on Mix, on a 1280x800 screen 470 px and 560 px, on landscape phones 278 px and 212 px.
+   Mix now uses exactly the height Record uses at every screen size (the copies below are in the same order and have the same specificity as the Record rules they mirror, so the same one
+   wins). Width follows from the height and the ratio, as before. Two position details are matched as well: on 521-899 px wide portrait screens the preview spans the page like Record's
+   (Mix's page column is narrower there), and on short landscape phones Mix has Record's top padding. */
+@media (min-width:900px){html body[data-tab=mix]{--sv:max(300px,calc(100dvh - 240px))!important}}
+@media (max-width:899px) and (orientation:portrait){html body[data-tab=mix]{--sv:max(240px,calc(100dvh - 292px))!important}}
+@media (min-width:600px) and (max-width:899px) and (orientation:portrait){html body[data-tab=mix]{--sv:max(240px,calc(100dvh - 316px))!important}}
+@media (orientation:landscape) and (max-height:500px){html body[data-tab=mix]{--sv:calc(100dvh - 112px)!important}}
+@media (min-width:900px) and (min-height:561px){html body[data-tab=mix]{--sv:max(300px,calc(100dvh - 330px))!important}}
+@media (max-width:599px) and (orientation:portrait) and (max-height:760px){html body[data-tab=mix]{--sv:max(200px,calc(100dvh - 336px))!important}}
+@media (min-width:600px) and (max-width:899px) and (orientation:portrait) and (max-height:1300px){html body[data-tab=mix]{--sv:max(240px,calc(100dvh - 384px))!important}}
+@media (min-width:521px) and (max-width:899px) and (orientation:portrait){
+  html body[data-tab=mix] #viewer{margin-left:calc(50% - 50vw + 6px);margin-right:calc(50% - 50vw + 6px)}
+}
+@media (orientation:landscape) and (max-height:500px){
+  html body[data-tab=mix] main{padding-top:4px}
+  html body[data-tab=mix] #viewer{top:4px}
+}
 </style>
 </body>
 </html>
