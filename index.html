@@ -3,6 +3,12 @@
   瞳 Hitomi  Version 1.0  (single-file recorder: Setup > Record > Mix > Export)
   VERSION 1.0 -- first numbered release. This file is the build that was developed as 'v3.0 R7.25' (the old v3.0 / R-numbers were an internal working series and are not version numbers).
   From here on the app is numbered 1.0, 1.1 ... Every entry below that starts with 'R' is the history of that working series, kept so each decision can still be traced.
+  Build 3 (internal id R7.27). Version 1.0 stays 1.0; this build changes how the app lines cells up:
+  (1) Auto-align uses a spectral onset feature (short FFT, 34 narrow bands, rising levels only) instead of loudness only. In a synthetic test with legato parts (30 ms pitch glide, with and without a loudness dip, down to 5 dB noise) the old feature accepted 0-1 of 8 and, with the +-150 ms window, placed 3 of 4 accepted cells wrong; the new one accepted 8 of 8 with a median error of 2 ms. Staccato material is unchanged (8 of 8, ~1 ms). Truly unrelated rhythms are still refused (0 of 16). The acceptance limit moved from 0.30 to 0.35 (same rhythm 0.40-0.81, unrelated 0.08-0.32 in 60 synthetic pairs).
+  (2) Two takes that were both recorded to the click get a gentle preference for staying close to where they are (the far-away peaks that sit exactly one click subdivision away are the usual false match).
+  (3) Setup > Headphone sync: the two sliders (5 ms steps) now have a number box (1 ms steps, -300 to +300).
+  (4) Mix > Timing: -1 / +1 ms buttons next to -5 / +5 / -20 / +20.
+  Real recordings have not been measured; the numbers above are from generated test sounds.
   Build 2 (internal id R7.26). Version 1.0 stays 1.0; this build adds, on top of the first Version 1.0 build (R7.25):
   (1) Setup page: 'Version 1.0' at the bottom.
   (2) Export > Quality: 'Small' and 'Standard' are always the same pixel size and differ only in bit rate, which a player cannot read; the chips now say 'Smallest file' / 'More detail' and a line says how much
@@ -600,11 +606,11 @@ body[data-tab=rec] #count{bottom:36px}
 .track.t2 .hpBtn{min-height:40px;padding:2px 12px;border-radius:999px;background:var(--card);border:1px solid var(--bd);font-size:.78rem;font-weight:700;white-space:nowrap;color:var(--mu)}
 .track.t2 .hpBtn.on{background:linear-gradient(135deg,var(--ac),var(--ac2));color:var(--acfg);border-color:transparent}
 .trT{flex:0 1 auto}.trSH .hpBtn{margin-left:auto}.trSH .acts{margin-left:0}
-.offBar{display:flex;align-items:center;gap:6px}
-.offBar button{flex:1;min-width:0;min-height:44px;padding:2px 4px;border-radius:999px;background:var(--card);border:1px solid var(--bd);font-size:.82rem;font-weight:700}
+.offBar{display:flex;align-items:center;gap:4px}
+.offBar button{flex:1;min-width:0;min-height:44px;padding:2px 2px;border-radius:999px;background:var(--card);border:1px solid var(--bd);font-size:.78rem;font-weight:700}
 .offBar button:active{background:var(--ac);color:var(--acfg)}
-.offVal{flex:1.6;display:flex;align-items:center;justify-content:center;gap:4px;min-width:0}
-.offVal .offn{width:100%;min-width:3.4em;max-width:5.6em;text-align:center}
+.offVal{flex:2.3;display:flex;align-items:center;justify-content:center;gap:4px;min-width:0}
+.offVal .offn{width:100%;min-width:2.5em;max-width:5.6em;text-align:center;padding-left:2px;padding-right:2px}
 .offVal i{font-style:normal;font-size:.78rem;color:var(--mu);font-weight:700}
 .vpRow{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);gap:10px}
 .track.t2 .vp{display:grid;grid-template-columns:1fr auto;grid-template-areas:"n v" "s s";align-items:center;gap:0 6px;min-width:0}
@@ -1191,9 +1197,9 @@ body.aoMode #flip{visibility:hidden}
       <div class="rowx"><button id="cal">開始校準</button><button id="calreset">重設</button></div>
       <h3>錄音同步微調</h3>
       <p class="hint">如果錄音時覺得之前幾格的聲音、拍子機或閃動對不上，可以在這裡手動調整。先錄好至少一格，再按「同步測試」，一邊聽一邊拉到聽起來合拍為止（其他錄音軟件也有類似的手動延遲設定）。</p>
-      <label class="chk" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">之前幾格聲音 <input type="range" id="adjpb" min="-300" max="300" step="5" value="0" style="flex:1;min-width:120px"> <span id="adjpbv">0 ms</span></label>
-      <label class="chk" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">閃動／數字 <input type="range" id="adjfx" min="-300" max="300" step="5" value="0" style="flex:1;min-width:120px"> <span id="adjfxv">0 ms</span></label>
-      <p class="hint">向右＝更遲，向左＝更早。</p>
+      <label class="chk" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">之前幾格聲音 <input type="range" id="adjpb" min="-300" max="300" step="5" value="0" style="flex:1;min-width:80px"> <span style="white-space:nowrap"><input type="number" id="adjpbn" min="-300" max="300" step="1" value="0" inputmode="numeric" aria-label="之前幾格聲音（毫秒）" style="width:4.6em;text-align:right"> <i style="font-style:normal">ms</i></span></label>
+      <label class="chk" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">閃動／數字 <input type="range" id="adjfx" min="-300" max="300" step="5" value="0" style="flex:1;min-width:80px"> <span style="white-space:nowrap"><input type="number" id="adjfxn" min="-300" max="300" step="1" value="0" inputmode="numeric" aria-label="閃動／數字（毫秒）" style="width:4.6em;text-align:right"> <i style="font-style:normal">ms</i></span></label>
+      <p class="hint">向右＝更遲，向左＝更早。拉桿每步 5 ms；要更細可直接輸入數字（1 ms 一步，−300 至 +300）。</p>
       <div class="rowx"><button id="synctest">同步測試</button><button id="adjreset">歸零</button></div>
       </div></details>
     </section>
@@ -2827,7 +2833,7 @@ function renderTracks(){
       <div class="trBody">
         <div class="trTabs" role="tablist">${[['pos',LL('時間','Timing')],['trim',LL('修剪','Trim')],['snd',LL('音色','Sound')],['pic',LL('畫面','Picture')]].map(a=>'<button type="button" role="tab" data-tab="'+a[0]+'" class="'+(trTab===a[0]?'on':'')+'" aria-selected="'+(trTab===a[0])+'">'+a[1]+'</button>').join('')}</div>
         <div class="pn pn-pos">
-          <div class="offBar" role="group" aria-label="${LL('位置微調（毫秒）','Offset nudge (ms)')}"><button type="button" data-n="-20">−20</button><button type="button" data-n="-5">−5</button><span class="offVal"><input type="number" class="offn" min="-1000" max="1000" step="1" value="${c.off||0}" data-k="offn" aria-label="${LL('位置（毫秒）','Offset (ms)')}" title="${LL('雙擊歸零','Double-click to reset')}"><i>ms</i></span><button type="button" data-n="5">+5</button><button type="button" data-n="20">+20</button></div>
+          <div class="offBar" role="group" aria-label="${LL('位置微調（毫秒）','Offset nudge (ms)')}"><button type="button" data-n="-20">−20</button><button type="button" data-n="-5">−5</button><button type="button" data-n="-1">−1</button><span class="offVal"><input type="number" class="offn" min="-1000" max="1000" step="1" value="${c.off||0}" data-k="offn" aria-label="${LL('位置（毫秒）','Offset (ms)')}" title="${LL('雙擊歸零','Double-click to reset')}"><i>ms</i></span><button type="button" data-n="1">+1</button><button type="button" data-n="5">+5</button><button type="button" data-n="20">+20</button></div>
           <p class="hint offHint">${LL('負數＝提早，正數＝延後（單位：毫秒）','Minus = earlier, plus = later (milliseconds)')}</p>
           <div class="posMore"><span class="trFoot"><select data-mv aria-label="${LL('換位','Move')}"><option value="">${LL('換位到…','Move to…')}</option>${Array.from({length:N},(_,j)=>j===i?'':'<option value="'+j+'">'+LL('第 '+(j+1)+' 格','Cell '+(j+1))+(cells[j]?'':LL('（空）',' (empty)'))+'</option>').join('')}</select><button type="button" data-re="1">${LL('重錄這格','Re-record')}</button></span></div>
         </div>
@@ -3354,7 +3360,9 @@ const NHOP=.005;
 /* R7.24: a match needs a normalised correlation of at least this. Measured on synthetic material: the same rhythm (even 25% of it damaged and extra notes added) scored 0.48-1.00;
    two unrelated rhythms scored 0.075-0.31 (89 of 90 passed the old 0.08 limit and would have been moved by an arbitrary amount, silently). 0.30 keeps a wide margin below the weakest
    true match. Real recordings have not been measured; a legato part with soft onsets can score lower and is then left in place with the 'adjust by hand' message. */
-const ALIGN_PK=.30;
+/* R7.27: with the spectral feature the same rhythm scored 0.40-0.81 (even legato, 5 dB noise, no loudness dip) and unrelated rhythms 0.08-0.32 (60 synthetic pairs), so the limit moves from 0.30 to 0.35. */
+const ALIGN_PK=.35;
+const ALIGN_PRIOR=.25;
 async function novelty(i){
   const c=cells[i];if(!c)return null;if(c.nov!==undefined)return c.nov;
   const b=await bufOf(i);if(!b){c.nov=null;return null}
@@ -3380,17 +3388,61 @@ function xcorr(a,b,L0,L1){
     for(let n=n0;n<n1;n++)s+=a[n]*b[n+L];r[L-L0]=s}
   return r;
 }
+/* R7.27: spectral onset feature for Auto-align. The old feature (novelty) follows only the overall loudness, so a legato part (notes joined with no gap, soft attacks) has almost no
+   onsets in it; in a synthetic test (30 ms pitch glide, no loudness dip) the correlation peak then sat on the wrong beat of the click grid (about 300 ms off at 100 bpm) and nothing was
+   accepted. This feature looks at the SPECTRUM instead: a short FFT (about 46 ms Hann window, a new frame every 5 ms) of the sound reduced to ~11 kHz, the level of ~34 narrow bands
+   (1/6 octave, 90 Hz - 4 kHz, never narrower than one FFT bin) in log scale, and the sum of how much each band ROSE since the previous frame (rises only). A note change moves energy
+   between narrow bands even when the loudness stays the same. Levels more than 30 dB under the loudest band count as silence, so hiss is not read as rhythm. Output format is the same
+   as novelty(): zero mean, unit length, .hs = true frame length in seconds, frame f centred on the same instant as in novelty(). Cached on the cell as nov2. Cost: about one FFT of
+   512 points per 5 ms; it gives the page a turn every ~25 ms. */
+const MB_NF=512;let mbT=null;
+function mbTab(){if(mbT)return mbT;const n=MB_NF,rev=new Uint16Array(n),cs=new Float64Array(n/2),sn=new Float64Array(n/2),win=new Float64Array(n);
+  for(let i=1;i<n;i++)rev[i]=(rev[i>>1]>>1)|((i&1)?n>>1:0);
+  for(let k=0;k<n/2;k++){cs[k]=Math.cos(2*Math.PI*k/n);sn[k]=-Math.sin(2*Math.PI*k/n)}
+  for(let i=0;i<n;i++)win[i]=.5-.5*Math.cos(2*Math.PI*i/n);
+  return mbT={rev,cs,sn,win,re:new Float64Array(n),im:new Float64Array(n)}}
+async function noveltyMB(i){
+  const c=cells[i];if(!c)return null;if(c.nov2!==undefined)return c.nov2;
+  const b=await bufOf(i);if(!b){c.nov2=null;return null}
+  const d=b.getChannelData(0),sr=b.sampleRate,hop=Math.max(1,Math.round(sr*NHOP)),n=Math.floor((d.length-hop*2)/hop)+1;
+  if(n<16){c.nov2=null;return null}
+  const NF=MB_NF,T=mbTab(),{rev,cs,sn,win,re,im}=T,M=Math.max(1,Math.round(sr/11025)),sr2=sr/M,L=Math.floor(d.length/M),x=new Float32Array(L);
+  for(let k=0;k<L;k++){let q=0;for(let j=0;j<M;j++)q+=d[k*M+j];x[k]=q/M}
+  const binHz=sr2/NF,e=[];let bin=Math.max(1,Math.round(90/binHz));const bmax=Math.min(NF/2,Math.floor(4000/binHz));
+  while(bin<bmax){e.push(bin);bin=Math.max(bin+1,Math.round(bin*1.1225))}e.push(bmax);
+  const nb=e.length-1;if(nb<4){c.nov2=null;return null}
+  const E=new Float32Array(n*nb);let tm=-99,t0=performance.now();
+  for(let f=0;f<n;f++){
+    const st=Math.round((f*hop+hop)/M)-NF/2;
+    for(let k=0;k<NF;k++){const j=st+k;re[rev[k]]=(j>=0&&j<L?x[j]:0)*win[k];im[rev[k]]=0}
+    for(let len=2;len<=NF;len<<=1){const h=len>>1,step=NF/len;
+      for(let p=0;p<NF;p+=len)for(let j=0,t=0;j<h;j++,t+=step){const a=p+j,bb=a+h,wr=cs[t],wi=sn[t],tr=re[bb]*wr-im[bb]*wi,ti=re[bb]*wi+im[bb]*wr;re[bb]=re[a]-tr;im[bb]=im[a]-ti;re[a]+=tr;im[a]+=ti}}
+    for(let q=0;q<nb;q++){let s=0;for(let k=e[q];k<e[q+1];k++)s+=re[k]*re[k]+im[k]*im[k];const v=Math.log10(1e-9+Math.sqrt(s/(e[q+1]-e[q])));E[f*nb+q]=v;if(v>tm)tm=v}
+    if((f&63)===63&&performance.now()-t0>25){await new Promise(r=>setTimeout(r,0));t0=performance.now()}}
+  const fl=tm-1.5,U=new Float32Array(n);
+  for(let f=1;f<n;f++){let u=0;for(let q=0;q<nb;q++){const cu=Math.max(E[f*nb+q],fl),pv=Math.max(E[(f-1)*nb+q],fl);if(cu>pv)u+=cu-pv}U[f]=u}
+  const V=new Float32Array(n),W=[1,2,3,2,1];let mean=0;
+  for(let f=0;f<n;f++){let a=0;for(let z=-2;z<=2;z++){const j=f+z;if(j>=0&&j<n)a+=W[z+2]*U[j]}V[f]=a/9;mean+=V[f]}
+  mean/=n;let nn=0;for(let f=0;f<n;f++){V[f]-=mean;nn+=V[f]*V[f]}
+  if(!(nn>1e-12)){c.nov2=null;return null}
+  nn=Math.sqrt(nn);for(let f=0;f<n;f++)V[f]/=nn;
+  V.hs=hop/sr;c.nov2=V;return V}
+const ALIGN_FEAT='mb';   /* 'mb' = the spectral feature above, 'amp' = the old loudness-only one */
+const alignFeat=k=>ALIGN_FEAT==='amp'?novelty(k):noveltyMB(k);
 /* 將第 i 格同已就位嘅 refs 比較，回傳建議位置 eff（ms，已含延遲補償嘅時間軸位置）同信心 */
 async function alignOne(i,refs,searchMs){
-  const xi=await novelty(i);if(!xi)return null;
+  const xi=await alignFeat(i);if(!xi)return null;
   const hopMs=(xi.hs||NHOP)*1000,R=Math.max(4,Math.round(searchMs/hopMs)),m0=Math.round(effOf(i)/hopMs),part=[];
-  for(const j of refs){if(j===i)continue;const xj=await novelty(j);if(xj)part.push({xj,ej:effOf(j)})}
+  for(const j of refs){if(j===i)continue;const xj=await alignFeat(j);if(xj)part.push({xj,ej:effOf(j),rec:!!(cells[i]&&cells[i].sync&&cells[j]&&cells[j].sync)})}
   if(!part.length)return null;
   const sc=new Float32Array(2*R+1);let dl=0;
   for(const p of part){
     const rj=Math.round(p.ej/hopMs),base=rj-m0;dl+=p.ej-rj*hopMs;
     const r=xcorr(p.xj,xi,base-R,base+R);
-    for(let k=-R;k<=R;k++)sc[k+R]+=r[R-k]/part.length}
+    /* R7.27 metronome prior: two takes that were both recorded to the same click already sit close together (the click and the beat-grid fit placed them), so a far-away peak is
+       more likely a false match than a real one. Their scores fall off gently with distance from the current position (down to 75% at the edge of the window). Imported files have
+       no such placement and are not touched. */
+    for(let k=-R;k<=R;k++)sc[k+R]+=r[R-k]/part.length*(p.rec?1-ALIGN_PRIOR*(k/R)*(k/R):1)}
   dl/=part.length;
   let bi=0;for(let k=1;k<sc.length;k++)if(sc[k]>sc[bi])bi=k;
   let s2=0;for(let k=1;k<sc.length-1;k++){if(Math.abs(k-bi)>=6&&sc[k]>=sc[k-1]&&sc[k]>=sc[k+1]&&sc[k]>s2)s2=sc[k]}
@@ -3762,12 +3814,16 @@ $('#adev').onchange=async e=>{if(recording||busy||counting){e.target.value=micId
   msg(LL('已切換錄音裝置。','Input device changed.'))};
 if(navigator.mediaDevices&&navigator.mediaDevices.addEventListener)navigator.mediaDevices.addEventListener('devicechange',()=>{listMics();latDevCheck()});
 setTimeout(latDevCheck,1500);setTimeout(latSilent,2500);
-{const pb=$('#adjpb'),fx=$('#adjfx'),show=()=>{$('#adjpbv').textContent=adjPb+' ms';$('#adjfxv').textContent=adjFx+' ms'};
- try{adjPb=+localStorage.getItem('eg_adjpb')||0;adjFx=+localStorage.getItem('eg_adjfx')||0}catch(e){}
- pb.value=adjPb;fx.value=adjFx;show();
+{const pb=$('#adjpb'),fx=$('#adjfx'),pn=$('#adjpbn'),fn=$('#adjfxn'),cl300=v=>Math.max(-300,Math.min(300,Math.round(+v||0))),
+ show=()=>{pb.value=adjPb;fx.value=adjFx;if(document.activeElement!==pn)pn.value=adjPb;if(document.activeElement!==fn)fn.value=adjFx};   /* R7.27: the slider moves in 5 ms steps, the number boxes in 1 ms; both show the same value */
+ try{adjPb=cl300(localStorage.getItem('eg_adjpb'));adjFx=cl300(localStorage.getItem('eg_adjfx'))}catch(e){}
+ show();
  const sv=()=>{try{localStorage.setItem('eg_adjpb',String(adjPb));localStorage.setItem('eg_adjfx',String(adjFx))}catch(e){}show()};
- pb.oninput=()=>{adjPb=+pb.value;sv()};fx.oninput=()=>{adjFx=+fx.value;sv()};
- $('#adjreset').onclick=()=>{adjPb=0;adjFx=0;pb.value=0;fx.value=0;sv()};
+ pb.oninput=()=>{adjPb=cl300(pb.value);sv()};fx.oninput=()=>{adjFx=cl300(fx.value);sv()};
+ pn.onchange=()=>{adjPb=cl300(pn.value);pn.value=adjPb;sv()};fn.onchange=()=>{adjFx=cl300(fn.value);fn.value=adjFx;sv()};
+ pn.onkeydown=e=>{if(e.key==='Enter')pn.blur()};fn.onkeydown=e=>{if(e.key==='Enter')fn.blur()};
+ pn.onfocus=()=>{try{pn.select()}catch(e){}};fn.onfocus=()=>{try{fn.select()}catch(e){}};
+ $('#adjreset').onclick=()=>{adjPb=0;adjFx=0;pn.value=0;fn.value=0;sv()};
  let tst=null;
  const stopTest=()=>{if(!tst)return;clearTimeout(tst);tst=null;stopClick();stopAll();cueClear();$('#synctest').textContent=LL('同步測試','Sync test')};
  $('#synctest').onclick=async()=>{
@@ -4500,6 +4556,7 @@ Object.assign(EN,{'拍':'Beat',
 '速度':'Tempo',
 '混音工具':'Mix tools'});
 Object.assign(EN,{'瞳 · 版本 1.0':'Hitomi · Version 1.0'});
+Object.assign(EN,{'向右＝更遲，向左＝更早。拉桿每步 5 ms；要更細可直接輸入數字（1 ms 一步，−300 至 +300）。':'Right = later, left = earlier. The slider moves in 5 ms steps; type a number for finer control (1 ms steps, −300 to +300).','之前幾格聲音（毫秒）':'Previous cells (ms)','閃動／數字（毫秒）':'Flash / count (ms)'});
 Object.assign(EN,{'先設好歌曲的速度（BPM），每一格都跟著這個拍子機錄。':'Set the song\'s tempo (BPM) first. Every cell is recorded to this click.'});
 const ENX=k=>{let m;if(m=/^(\d+) 小節$/.exec(k))return m[1]+(m[1]==='1'?' bar':' bars');if(m=/^(\d+) 圈$/.exec(k))return m[1]+(m[1]==='1'?' loop':' loops');return null};
 const I18N={
