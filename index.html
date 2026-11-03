@@ -3,12 +3,13 @@
   瞳 Hitomi  Version 1.0  (single-file recorder: Setup > Record > Mix > Export)
   VERSION 1.0 -- first numbered release. This file is the build that was developed as 'v3.0 R7.25' (the old v3.0 / R-numbers were an internal working series and are not version numbers).
   From here on the app is numbered 1.0, 1.1 ... Every entry below that starts with 'R' is the history of that working series, kept so each decision can still be traced.
-  Build 3 (internal id R7.27). Version 1.0 stays 1.0; this build changes how the app lines cells up:
-  (1) Auto-align uses a spectral onset feature (short FFT, 34 narrow bands, rising levels only) instead of loudness only. In a synthetic test with legato parts (30 ms pitch glide, with and without a loudness dip, down to 5 dB noise) the old feature accepted 0-1 of 8 and, with the +-150 ms window, placed 3 of 4 accepted cells wrong; the new one accepted 8 of 8 with a median error of 2 ms. Staccato material is unchanged (8 of 8, ~1 ms). Truly unrelated rhythms are still refused (0 of 16). The acceptance limit moved from 0.30 to 0.35 (same rhythm 0.40-0.81, unrelated 0.08-0.32 in 60 synthetic pairs).
+  Build 3 (internal id R7.27). Version 1.0 stays 1.0; this build changes how the app lines cells up, the phone preview size and the wording of Setup > More settings:
+  (1) Auto-align uses a spectral onset feature (short FFT, 34 narrow bands, rising levels only) instead of loudness only. In a synthetic test with legato parts (30 ms pitch glide, with and without a loudness dip, down to 5 dB noise) the old feature accepted 0-1 of 8 and, with the +-150 ms window, placed 3 of 4 accepted cells wrong; the new one accepted 8 of 8 with a median error of 2 ms. Staccato material is unchanged (8 of 8, ~1 ms). Truly unrelated rhythms are still refused (0 of 16); two different parts with the same rhythm on the same click grid can still be accepted (4 of 8 in the test, 1 of them wrong), as they could with the old feature. The acceptance limit moved from 0.30 to 0.35 (same rhythm 0.40-0.81, unrelated 0.08-0.32 in 60 synthetic pairs).
   (2) Two takes that were both recorded to the click get a gentle preference for staying close to where they are.
   (3) Setup > Headphone sync: the two sliders (5 ms steps) now have a number box (1 ms steps, -300 to +300).
   (4) Mix > Timing: -1 / +1 ms buttons next to -5 / +5 / -20 / +20.
-  (5) Record and Mix show the preview at the same size and position (see the hitomi-r7-27-same-preview style block).
+  (5) Record and Mix show the preview at the same size and position, and on phones held upright the preview is bigger (see the hitomi-r7-27 style block and script). On those phones the Import button moves into the top toolbar (it would otherwise sit under the red button) and the (i) import tips are not shown.
+  (6) Setup > More settings: clearer wording. The microphone list says the choice is not saved and that some Android phones (Samsung with a USB-C headset) force the headset microphone while iPad Safari follows the choice; the two different 'Auto' options of the video file size are named; the draft-saving note sits beside its checkbox; headphone sync describes the whole procedure; the two manual sliders say what they move; the keyboard shortcuts (Space, P) are listed.
   Real recordings have not been measured; the numbers above are from generated test sounds.
   Build 2 (internal id R7.26). Version 1.0 stays 1.0; this build adds, on top of the first Version 1.0 build (R7.25):
   (1) Setup page: 'Version 1.0' at the bottom.
@@ -1178,34 +1179,37 @@ body.aoMode #flip{visibility:hidden}
     <section class="advSec">
       <h3>錄音裝置與畫質</h3>
       <div class="rowx"><span class="lab">錄音裝置</span><select id="adev" aria-label="錄音裝置" style="flex:1;min-width:0"><option value="">系統預設麥克風</option></select></div>
+      <p class="hint" id="micHint">首次要先允許麥克風權限，名稱才會顯示。選擇不會保存，重新整理後回到系統預設。部分 Android 手機（如 Samsung）接上 USB-C 耳機後，系統會強制用耳機麥克風，選了手機麥克風也無效；iPad Safari 則照你的選擇。</p>
       <div class="rowx vidOnly"><span class="lab">鏡頭畫質</span><select id="cq" aria-label="鏡頭畫質"><option value="std">標準 720p</option><option value="hi">高 1080p</option><option value="lo">省電 480p</option></select></div>
-      <div class="rowx vidOnly"><span class="lab">錄影檔案大小</span><select id="vb" aria-label="錄影檔案大小"><option value="q">自動（跟鏡頭畫質）</option><option value="2">省空間 2 Mbps（約 17 MB／分）</option><option value="4">標準 4 Mbps（約 32 MB／分）</option><option value="8">高 8 Mbps（約 62 MB／分）</option><option value="auto">自動（瀏覽器預設）</option></select></div>
+      <div class="rowx vidOnly"><span class="lab">錄影檔案大小</span><select id="vb" aria-label="錄影檔案大小"><option value="q">跟鏡頭畫質（建議）</option><option value="2">省空間 2 Mbps（約 17 MB／分）</option><option value="4">標準 4 Mbps（約 32 MB／分）</option><option value="8">高 8 Mbps（約 62 MB／分）</option><option value="auto">由瀏覽器決定</option></select></div>
       <div class="rowx"><span class="lab">錄製編碼</span><select id="fmt" aria-label="錄製編碼"><option value="auto">自動（優先 MP4）</option><option value="mp4">MP4 (H.264)</option><option value="vp8">WebM (VP8)</option><option value="h264w">WebM (H.264)</option></select></div>
+      <p class="hint">畫質、檔案大小和編碼要等下次開鏡頭才生效。編碼只在錄完後播放沒有畫面時才需要換，和匯出格式無關。</p>
       <label class="chk vidOnly"><input type="checkbox" id="mir"> 只鏡像預覽（錄下來的影片方向不變）</label>
       <label class="chk"><input type="checkbox" id="rdon" checked> 錄音時每秒保存草稿（閃退後可救回）</label>
+      <p class="hint">部分瀏覽器用 MP4 錄音時不會保存草稿；想確保有草稿，請把「錄製編碼」改為 WebM (VP8)。</p>
       <label class="chk vidOnly"><input type="checkbox" id="afl" checked> 錄影時鎖定對焦／曝光／白平衡</label>
-      <p class="hint vidOnly">只在支援的瀏覽器生效（Android Chrome、電腦 Chrome）；iPhone Safari 暫不支援。錄音開始時鎖定，錄完自動放開。</p>
-      <p class="hint">首次需先允許麥克風權限，裝置名稱才會顯示。畫質、編碼更換後下次開鏡頭才生效；編碼只在錄完播放沒有畫面時才需要換（與匯出格式無關）。</p>
+      <p class="hint vidOnly">只在支援的瀏覽器有效（Android Chrome、電腦 Chrome），iPhone Safari 暫不支援。按下錄音時鎖定，錄完自動放開。</p>
     </section>
     <section class="advSec" id="calSec">
       <h3>耳機同步</h3>
       <div class="rowx"><button type="button" id="calQuick">🎧 檢查耳機同步</button></div>
-      <p class="hint">使用藍牙耳機，或覺得錄出來不合拍時才需要。約 20 秒：聽到 4 下預備拍後，跟著拍子機拍手 8 下，程式會自動補償延遲。有線耳機通常不用做。</p>
+      <p class="hint">用藍牙耳機，或覺得錄出來不合拍時才需要；有線耳機通常不用做。戴好耳機，按下按鈕，聽完 4 下預備拍後跟著拍子機拍手 8 下（敲桌、打響指都可以），程式會自動補償延遲，必要時再確認一輪，全程約 20 秒。</p>
       <p class="hint" id="calres" role="status" aria-live="polite">未校準。</p>
       <details class="advFold" id="syncMore"><summary>進階：自動量度、手動微調</summary><div class="advFoldBody">
       <h3>自動量度（免拍手）</h3>
-      <p class="hint">使用藍牙耳機建議校準，有線耳機通常不需要。按下開始後，程式會播 10 下「嘟」聲並用麥克風收回來，量度整條路徑的延遲。請將耳機貼近麥克風（或改用喇叭）並調大音量；如果麥克風收不到「嘟」聲，就跟著每下「嘟」拍手（或打響指）。可量度的延遲約 0–400 ms，超出範圍會提示而不會儲存。更換耳機後請重新校準。</p>
-      <div class="rowx"><button id="cal">開始校準</button><button id="calreset">重設</button></div>
+      <p class="hint">程式會播 10 下「嘟」聲，用麥克風收回來，量度整條路徑的延遲，約 9 秒。請先將耳機貼近麥克風（或改用喇叭）、調大音量，並保持安靜。如果麥克風收不到「嘟」聲，就跟著每下「嘟」拍手或打響指。可量度約 0–400 ms，超出範圍不會儲存。換了耳機要重新校準。</p>
+      <div class="rowx"><button id="cal">開始校準</button><button id="calreset">重設校準</button></div>
       <h3>錄音同步微調</h3>
-      <p class="hint">如果錄音時覺得之前幾格的聲音、拍子機或閃動對不上，可以在這裡手動調整。先錄好至少一格，再按「同步測試」，一邊聽一邊拉到聽起來合拍為止（其他錄音軟件也有類似的手動延遲設定）。</p>
-      <label class="chk" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">之前幾格聲音 <input type="range" id="adjpb" min="-300" max="300" step="5" value="0" style="flex:1;min-width:80px"> <span style="white-space:nowrap"><input type="number" id="adjpbn" min="-300" max="300" step="1" value="0" inputmode="numeric" aria-label="之前幾格聲音（毫秒）" style="width:4.6em;text-align:right"> <i style="font-style:normal">ms</i></span></label>
-      <label class="chk" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">閃動／數字 <input type="range" id="adjfx" min="-300" max="300" step="5" value="0" style="flex:1;min-width:80px"> <span style="white-space:nowrap"><input type="number" id="adjfxn" min="-300" max="300" step="1" value="0" inputmode="numeric" aria-label="閃動／數字（毫秒）" style="width:4.6em;text-align:right"> <i style="font-style:normal">ms</i></span></label>
-      <p class="hint">向右＝更遲，向左＝更早。拉桿每步 5 ms；要更細可直接輸入數字（1 ms 一步，−300 至 +300）。</p>
+      <p class="hint">錄音時如果覺得之前幾格的聲音、拍子機或閃動對不上，可以在這裡手動調整。先錄好至少一格，按「同步測試」會播放已錄的格和拍子機約 9 秒，一邊聽一邊調到兩者同時出現為止。</p>
+      <label class="chk" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">已錄的格（聲音） <input type="range" id="adjpb" min="-300" max="300" step="5" value="0" style="flex:1;min-width:80px"> <span style="white-space:nowrap"><input type="number" id="adjpbn" min="-300" max="300" step="1" value="0" inputmode="numeric" aria-label="已錄的格聲音（毫秒）" style="width:4.6em;text-align:right"> <i style="font-style:normal">ms</i></span></label>
+      <label class="chk" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">畫面閃動與倒數數字 <input type="range" id="adjfx" min="-300" max="300" step="5" value="0" style="flex:1;min-width:80px"> <span style="white-space:nowrap"><input type="number" id="adjfxn" min="-300" max="300" step="1" value="0" inputmode="numeric" aria-label="畫面閃動與倒數數字（毫秒）" style="width:4.6em;text-align:right"> <i style="font-style:normal">ms</i></span></label>
+      <p class="hint">向右＝更遲出現，向左＝更早出現。拉桿每步 5 ms；要更細可直接輸入數字（1 ms 一步，−300 至 +300）。</p>
       <div class="rowx"><button id="synctest">同步測試</button><button id="adjreset">歸零</button></div>
       </div></details>
     </section>
     <section class="advSec">
-      <p class="hint">腳踏／藍牙翻頁器（錄音頁）：PageDown、→ 開始／停止錄音；PageUp、← 播放／暫停。</p>
+      <h3>快速鍵</h3>
+      <p class="hint">錄音頁：空白鍵、PageDown、→ 開始／停止錄音；P、PageUp、← 播放／暫停。藍牙翻頁器和腳踏開關可以直接用。</p>
     </section>
     </div></details>
   <button id="toRec" class="cta"><span id="toRecT" data-i18n-key="action.startRecording">開始錄音</span><svg class="ic"><use href="#i-next"/></svg></button>
@@ -4301,7 +4305,7 @@ const EN={'瞳':'Hitomi',
 '錄製編碼':'Recording codec',
 '自動（優先 MP4）':'Auto (MP4 preferred)',
 '延遲校準':'Latency calibration',
-'使用藍牙耳機建議校準，有線耳機通常不需要。按下開始後，程式會播 10 下「嘟」聲並用麥克風收回來，量度整條路徑的延遲。請將耳機貼近麥克風（或改用喇叭）並調大音量；如果麥克風收不到「嘟」聲，就跟著每下「嘟」拍手（或打響指）。可量度的延遲約 0–400 ms，超出範圍會提示而不會儲存。更換耳機後請重新校準。':'Recommended for Bluetooth headphones; wired headphones usually do not need it. After you press start, the app plays 10 beeps and records them with the mic to measure the latency of the whole path. Hold the headset close to the mic (or use speakers) and raise the volume; if the mic cannot hear the beeps, clap (or snap) along with each one. The measurable delay is about 0-400 ms; anything outside that is reported and not saved. Recalibrate if you change headphones.',
+'程式會播 10 下「嘟」聲，用麥克風收回來，量度整條路徑的延遲，約 9 秒。請先將耳機貼近麥克風（或改用喇叭）、調大音量，並保持安靜。如果麥克風收不到「嘟」聲，就跟著每下「嘟」拍手或打響指。可量度約 0–400 ms，超出範圍不會儲存。換了耳機要重新校準。':'The app plays 10 beeps and records them with the mic to measure the delay of the whole path, about 9 s. First hold the headset close to the mic (or use speakers), raise the volume and keep quiet. If the mic cannot hear the beeps, clap or snap along with each one. The measurable delay is about 0-400 ms; anything outside that is not saved. Recalibrate after changing headphones.',
 '開始校準':'Start calibration',
 '重設':'Reset',
 '未校準。':'Not calibrated.',
@@ -4354,7 +4358,7 @@ const EN={'瞳':'Hitomi',
 '聲音＋閃動':'Sound + flash',
 '只閃動':'Flash only (silent)',
 '樂器':'Instrument',
-'腳踏／藍牙翻頁器（錄音頁）：PageDown、→ 開始／停止錄音；PageUp、← 播放／暫停。':'Foot pedal / Bluetooth page turner (Record tab): PageDown or → starts/stops recording; PageUp or ← plays/pauses.',
+'錄音頁：空白鍵、PageDown、→ 開始／停止錄音；P、PageUp、← 播放／暫停。藍牙翻頁器和腳踏開關可以直接用。':'Record tab: Space, PageDown or → starts/stops recording; P, PageUp or ← plays/pauses. Bluetooth page turners and foot switches work as they are.',
 '影片 · 音檔 · 專案檔':'Video · audio · project',
 '可一次選多個檔案':'Select multiple files at once',
 '會填入空格；已有錄音的格不會被蓋過':'Fills empty cells; existing recordings are not overwritten',
@@ -4372,7 +4376,7 @@ const EN={'瞳':'Hitomi',
 '保留':'Keep',
 '重錄':'Redo',
 '麥克風音量（點一下清除過載燈）':'Mic level (tap to clear the clip light)'};
-Object.assign(EN,{'錄影檔案大小':'Video file size','省空間 2 Mbps（約 17 MB／分）':'Small 2 Mbps (~17 MB/min)','標準 4 Mbps（約 32 MB／分）':'Standard 4 Mbps (~32 MB/min)','高 8 Mbps（約 62 MB／分）':'High 8 Mbps (~62 MB/min)','自動（瀏覽器預設）':'Auto (browser default)','自動（跟鏡頭畫質）':'Auto (follows camera quality)'});
+Object.assign(EN,{'錄影檔案大小':'Video file size','省空間 2 Mbps（約 17 MB／分）':'Small 2 Mbps (~17 MB/min)','標準 4 Mbps（約 32 MB／分）':'Standard 4 Mbps (~32 MB/min)','高 8 Mbps（約 62 MB／分）':'High 8 Mbps (~62 MB/min)'});
 Object.assign(EN,{'錄影':'Video',
 '只錄聲音':'Audio only',
 '錄製內容':'Recording type',
@@ -4381,13 +4385,13 @@ Object.assign(EN,{'錄影':'Video',
 '方式':'Mode',
 '錄音裝置與畫質':'Input device & quality',
 
-'首次需先允許麥克風權限，裝置名稱才會顯示。畫質、編碼更換後下次開鏡頭才生效；編碼只在錄完播放沒有畫面時才需要換（與匯出格式無關）。':'Allow mic permission once so device names appear. Quality and codec changes apply the next time the camera opens; change the codec only if playback shows no picture after recording (unrelated to the export format).'});
+'畫質、檔案大小和編碼要等下次開鏡頭才生效。編碼只在錄完後播放沒有畫面時才需要換，和匯出格式無關。':'Quality, file size and codec only take effect the next time the camera opens. Change the codec only if playback shows no picture after recording; it has nothing to do with the export format.'});
 /* 5-9-72：節拍提示摺疊；展開時輪子重新對位，並顯示一行摘要 */
 Object.assign(EN,{'開始前等待':'Wait first','開始前等待（秒）':'Wait before start (s)','預備小節':'Count-in','只預備拍有聲':'Count-in only','拍子音量':'Click volume','原聲樂器可選「只預備拍有聲」或畫面閃動，避免節拍聲被麥克風收進去。':'For acoustic instruments, pick "Count-in only" or the screen flash so the click does not leak into the mic.','全部（':'All (','）›':') ›','自動整理':'Quick fixes','令各格一樣大聲':'Even out the loudness','少':'Less','多':'More'});
-Object.assign(EN,{'之後先':'Later','錄音同步微調':'Recording sync adjustment','之前幾格聲音':'Previous cells','閃動／數字':'Flash / count','向右＝更遲，向左＝更早。':'Right = later, left = earlier.','同步測試':'Sync test','歸零':'Reset'});
-Object.assign(EN,{'耳機同步':'Headphone sync','進階：自動量度、手動微調':'Advanced: automatic measure, manual adjustment','自動量度（免拍手）':'Automatic measure (no clapping)','🎧 檢查耳機同步':'🎧 Headphone sync','使用藍牙耳機，或覺得錄出來不合拍時才需要。約 20 秒：聽到 4 下預備拍後，跟著拍子機拍手 8 下，程式會自動補償延遲。有線耳機通常不用做。':'Only needed with Bluetooth headphones, or when recordings feel out of time. About 20 s: after the 4 count-in beats, clap with the click 8 times and the app compensates the delay automatically. Wired headphones usually do not need it.'});
+Object.assign(EN,{'之後先':'Later','錄音同步微調':'Recording sync adjustment','已錄的格（聲音）':'Recorded cells (sound)','畫面閃動與倒數數字':'Screen flash and count-in numbers','向右＝更遲出現，向左＝更早出現。拉桿每步 5 ms；要更細可直接輸入數字（1 ms 一步，−300 至 +300）。':'Right = appears later, left = appears earlier. The slider moves in 5 ms steps; type a number for finer control (1 ms steps, −300 to +300).','同步測試':'Sync test','歸零':'Reset'});
+Object.assign(EN,{'耳機同步':'Headphone sync','進階：自動量度、手動微調':'Advanced: automatic measure, manual adjustment','自動量度（免拍手）':'Automatic measure (no clapping)','🎧 檢查耳機同步':'🎧 Headphone sync','用藍牙耳機，或覺得錄出來不合拍時才需要；有線耳機通常不用做。戴好耳機，按下按鈕，聽完 4 下預備拍後跟著拍子機拍手 8 下（敲桌、打響指都可以），程式會自動補償延遲，必要時再確認一輪，全程約 20 秒。':'Only needed with Bluetooth headphones, or when recordings feel out of time; wired headphones usually do not need it. Put your headphones on, press the button, and after the 4 count-in beats clap along with the click 8 times (tapping a table or snapping works too). The app compensates the delay automatically and, if needed, checks once more; about 20 s in all.'});
 Object.assign(EN,{'錄後自動對齊':'Align after recording','更多設定':'More settings','🎧 聽哪幾格':'🎧 Which cells to hear','檢查裝置造成的時間差':'Checks timing offsets caused by your device','錄音快捷工具':'Recording quick tools','錄音參考':'Recording reference','匯入說明':'Import tips','匯出類型':'Export type',
-'如果錄音時覺得之前幾格的聲音、拍子機或閃動對不上，可以在這裡手動調整。先錄好至少一格，再按「同步測試」，一邊聽一邊拉到聽起來合拍為止（其他錄音軟件也有類似的手動延遲設定）。':'If the earlier cells, the click or the flash feel out of sync while you record, adjust them by hand here. Record at least one cell first, then tap "Sync test" and drag until it sounds in sync (other recording apps have a similar manual delay setting).'});
+'錄音時如果覺得之前幾格的聲音、拍子機或閃動對不上，可以在這裡手動調整。先錄好至少一格，按「同步測試」會播放已錄的格和拍子機約 9 秒，一邊聽一邊調到兩者同時出現為止。':'If the earlier cells, the click or the flash feel out of sync while you record, adjust them by hand here. Record at least one cell first, then tap "Sync test": it plays the recorded cells and the click for about 9 s. Adjust until the two arrive together.'});
 function cueSum(){const e=$('#cueSum');if(!e)return;const v=$('#cvis').value;e.textContent=v==='both'?LL('聲音＋閃動','Sound + flash'):v==='vis'?LL('閃動','Flash'):v==='cnt'?LL('只預備拍有聲','Count-in only'):LL('聲音','Sound')}
 
 $('#cueDet').addEventListener('toggle',()=>requestAnimationFrame(()=>{tempoUI();cueSum()}));
@@ -4540,7 +4544,7 @@ ui=decorateFunction(ui,{after:()=>{if(!recording&&camLk)camLock(false)}});
 const FD=.008;
 function fadeIn(g,t){const f=g&&g._fd;if(!f)return;f.gain.setValueAtTime(0,t);f.gain.linearRampToValueAtTime(1,t+FD)}
 function fadeOut(g,t){const f=g&&g._fd;if(!f)return;f.gain.setValueAtTime(1,Math.max(0,t-FD*1.5));f.gain.linearRampToValueAtTime(0,t)}
-Object.assign(EN,{'錄音時每秒保存草稿（閃退後可救回）':'Save a draft every second while recording (recover after a crash)','錄影時鎖定對焦／曝光／白平衡':'Lock focus / exposure / white balance while recording','只在支援的瀏覽器生效（Android Chrome、電腦 Chrome）；iPhone Safari 暫不支援。錄音開始時鎖定，錄完自動放開。':'Only works in browsers that support it (Android Chrome, desktop Chrome); not on iPhone Safari. Locks when recording starts and releases when it ends.'});
+Object.assign(EN,{'錄音時每秒保存草稿（閃退後可救回）':'Save a draft every second while recording (recover after a crash)','錄影時鎖定對焦／曝光／白平衡':'Lock focus / exposure / white balance while recording','只在支援的瀏覽器有效（Android Chrome、電腦 Chrome），iPhone Safari 暫不支援。按下錄音時鎖定，錄完自動放開。':'Only works in browsers that support it (Android Chrome, desktop Chrome), not on iPhone Safari. Locks when you press Record and releases when it ends.'});
 Object.assign(EN,{'拍':'Beat',
 '預備':'Count-in',
 '只鏡像預覽（錄下來的影片方向不變）':'Mirror preview only (the recorded video keeps its orientation)',
@@ -4557,7 +4561,10 @@ Object.assign(EN,{'拍':'Beat',
 '速度':'Tempo',
 '混音工具':'Mix tools'});
 Object.assign(EN,{'瞳 · 版本 1.0':'Hitomi · Version 1.0'});
-Object.assign(EN,{'向右＝更遲，向左＝更早。拉桿每步 5 ms；要更細可直接輸入數字（1 ms 一步，−300 至 +300）。':'Right = later, left = earlier. The slider moves in 5 ms steps; type a number for finer control (1 ms steps, −300 to +300).','之前幾格聲音（毫秒）':'Previous cells (ms)','閃動／數字（毫秒）':'Flash / count (ms)'});
+Object.assign(EN,{'重設校準':'Reset calibration','快速鍵':'Keyboard shortcuts','已錄的格聲音（毫秒）':'Recorded cells sound (ms)','畫面閃動與倒數數字（毫秒）':'Screen flash and count-in numbers (ms)',
+'首次要先允許麥克風權限，名稱才會顯示。選擇不會保存，重新整理後回到系統預設。部分 Android 手機（如 Samsung）接上 USB-C 耳機後，系統會強制用耳機麥克風，選了手機麥克風也無效；iPad Safari 則照你的選擇。':'Allow microphone permission once so the names show. The choice is not saved; after a reload it returns to the system default. On some Android phones (such as Samsung) the system forces the headset microphone once a USB-C headset is plugged in, so choosing the phone microphone has no effect; iPad Safari follows your choice.',
+'部分瀏覽器用 MP4 錄音時不會保存草稿；想確保有草稿，請把「錄製編碼」改為 WebM (VP8)。':'In some browsers MP4 recording does not save a draft; to be sure drafts are saved, set Recording codec to WebM (VP8).',
+'跟鏡頭畫質（建議）':'Follow camera quality','由瀏覽器決定':'Let the browser decide'});
 Object.assign(EN,{'先設好歌曲的速度（BPM），每一格都跟著這個拍子機錄。':'Set the song\'s tempo (BPM) first. Every cell is recorded to this click.'});
 const ENX=k=>{let m;if(m=/^(\d+) 小節$/.exec(k))return m[1]+(m[1]==='1'?' bar':' bars');if(m=/^(\d+) 圈$/.exec(k))return m[1]+(m[1]==='1'?' loop':' loops');return null};
 const I18N={
@@ -5415,19 +5422,24 @@ body[data-tab=rec] #meter[data-lv=clip][data-level^="曾"]::before,body[data-tab
 /* Phone landscape: the tab bar is a 66 px strip on the left, and only the Record page left room for it (padding-left 76 px). Setup, Mix and Export kept 12 px, so the first 54 px of every card was hidden under the strip (found by the layout test; present since R7.x). */
 @media (orientation:landscape) and (max-height:500px){html body main{padding-left:calc(76px + env(safe-area-inset-left,0px))}}
 </style>
-<style id="hitomi-r7-27-same-preview">
-/* R7.27 (CSS only): the Record and Mix previews are the same size and in the same place.
-   Before, each page had its own height budget (Record leaves room for the level bar, status line and red button under the preview; Mix had its own, larger one), so the preview changed
-   size every time you switched tab: on a 360x640 phone 1:1 was 304 px on Record and 348 px on Mix, on a 1280x800 screen 470 px and 560 px, on landscape phones 278 px and 212 px.
-   Mix now uses exactly the height Record uses at every screen size (the copies below are in the same order and have the same specificity as the Record rules they mirror, so the same one
-   wins). Width follows from the height and the ratio, as before. Two position details are matched as well: on 521-899 px wide portrait screens the preview spans the page like Record's
-   (Mix's page column is narrower there), and on short landscape phones Mix has Record's top padding. */
+<style id="hitomi-r7-27">
+/* R7.27 (CSS only) -------------------------------------------------------------------------------------------------------------------------------
+   A. Record and Mix show the preview at the same size and in the same place.
+      Before, each page had its own height budget, so the preview changed size every time you switched tab (360x640 phone, 1:1: 304 px on Record, 348 px on Mix; 1280x800 screen:
+      470 px and 560 px; landscape phone 278 px and 212 px). Mix now uses exactly the height Record uses at every screen size (same order, same specificity as the Record rules,
+      so the same one wins).
+   B. Phones held upright (<= 599 px wide, portrait): the preview is bigger because less is stacked under it (budget: 100dvh minus 260 px for Record and Mix alike; Record while
+      recording needs 256).
+      - Record: the play bar is hidden (the take bar has "Last 10 s" and "Full take", Mix has the play bar, and the P key still plays). It cost 50 px.
+      - Record: the level bar is a thinner strip (36 -> 26 px).
+      - Record: "Which cells to hear" and the status sentence share one row (before: two rows, 28 + 16..32 px). Opened, the list pops up over the level bar.
+      - Record: while recording, the time / bar / beat readout is 40 px instead of 52 px.
+      - The red button is pinned above the tab bar at every phone height (it was only pinned up to 760 px high; on an 844 px high phone it sat under the tab bar until you scrolled). */
 @media (min-width:900px){html body[data-tab=mix]{--sv:max(300px,calc(100dvh - 240px))!important}}
 @media (max-width:899px) and (orientation:portrait){html body[data-tab=mix]{--sv:max(240px,calc(100dvh - 292px))!important}}
 @media (min-width:600px) and (max-width:899px) and (orientation:portrait){html body[data-tab=mix]{--sv:max(240px,calc(100dvh - 316px))!important}}
 @media (orientation:landscape) and (max-height:500px){html body[data-tab=mix]{--sv:calc(100dvh - 112px)!important}}
 @media (min-width:900px) and (min-height:561px){html body[data-tab=mix]{--sv:max(300px,calc(100dvh - 330px))!important}}
-@media (max-width:599px) and (orientation:portrait) and (max-height:760px){html body[data-tab=mix]{--sv:max(200px,calc(100dvh - 336px))!important}}
 @media (min-width:600px) and (max-width:899px) and (orientation:portrait) and (max-height:1300px){html body[data-tab=mix]{--sv:max(240px,calc(100dvh - 384px))!important}}
 @media (min-width:521px) and (max-width:899px) and (orientation:portrait){
   html body[data-tab=mix] #viewer{margin-left:calc(50% - 50vw + 6px);margin-right:calc(50% - 50vw + 6px)}
@@ -5436,6 +5448,57 @@ body[data-tab=rec] #meter[data-lv=clip][data-level^="曾"]::before,body[data-tab
   html body[data-tab=mix] main{padding-top:4px}
   html body[data-tab=mix] #viewer{top:4px}
 }
+#statusRow{display:contents}
+@media (max-width:599px) and (orientation:portrait){
+  html body[data-tab=rec]:not(.recing),html body[data-tab=rec].recing,html body[data-tab=mix]{--sv:max(200px,calc(100dvh - 260px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px)))!important}
+  html body[data-tab=rec] #tport{display:none!important}
+  html body[data-tab=rec] #meter,html body[data-tab=rec].recing #meter{padding:2px 8px!important;margin-top:0!important;border-radius:10px!important;gap:6px!important;min-height:0!important}
+  html body[data-tab=rec] #meter .mt{height:10px!important}
+  html body[data-tab=rec]:not(.recing) #statusRow,html body[data-tab=rec].recing #statusRow:has(#msg.hi,#msg.ok,#msg.err){display:flex;align-items:center;gap:6px;margin:4px 0 0;min-height:30px}
+  html body[data-tab=rec].recing #statusRow:not(:has(#msg.hi,#msg.ok,#msg.err)){display:none}
+  html body[data-tab=rec] #statusRow #refPanel{flex:none;margin:0;padding:3px 10px;min-height:0;border-radius:999px;width:auto}
+  html body[data-tab=rec] #statusRow #refPanel:not(.open) .refHead b{display:none}
+  html body[data-tab=rec] #statusRow #refPanel:not(.open) .refHead span::after{content:" ▾"}
+  html body[data-tab=rec] #statusRow #refPanel.open .refHead span::after{content:" ▴"}
+  html body[data-tab=rec] #statusRow #refPanel .refHead{gap:6px;white-space:nowrap}
+  html body[data-tab=rec] #statusRow{position:relative}
+  html body[data-tab=rec] #statusRow #refPanel.open{position:absolute;left:0;right:0;bottom:calc(100% + 4px);z-index:14;border-radius:14px;padding:6px 10px;box-shadow:var(--sh)}
+  html body[data-tab=rec] #statusRow #msg{flex:1 1 0;min-width:0;margin:0!important;padding:0 4px!important;font-size:.74rem;line-height:1.25;-webkit-line-clamp:2!important;text-align:left}
+  html body[data-tab=rec] #statusRow #msg.hi,html body[data-tab=rec] #statusRow #msg.ok,html body[data-tab=rec] #statusRow #msg.err{padding:2px 8px!important;border-radius:10px}
+  html body[data-tab=rec].recing #rst{min-height:40px!important;padding:3px 12px!important;margin-top:4px!important;gap:10px!important}
+  html body[data-tab=rec].recing #rst .rtm,html body[data-tab=rec].recing #rst .rbar b{font-size:1.3rem}
+  html body[data-tab=rec] .dock{position:fixed!important;left:0!important;right:0!important;top:auto!important;bottom:calc(64px + env(safe-area-inset-bottom,0px))!important;z-index:15;margin:0!important;padding:6px 12px!important;
+    background:color-mix(in srgb,var(--bg) 94%,transparent);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border-top:1px solid var(--bd)}
+  html body[data-tab=rec] .dock .recbtn{height:56px;border-radius:28px}
+  html body[data-tab=rec] main{padding-bottom:calc(140px + env(safe-area-inset-bottom,0px))}
+  /* the import button moves up into the header toolbar (next to the camera flip button); the row that held it would now sit under the red button */
+  html body[data-tab=rec] #impRow{display:none!important}
+  html body[data-tab=rec] #recCompactTools>#imp1{display:inline-flex!important;align-items:center;width:auto!important;min-width:0;height:36px!important;min-height:36px!important;padding:0 11px!important;border-radius:999px!important;white-space:nowrap}
+  html body[data-tab=rec] #recCompactTools>#imp1 .impTxt b{font-size:.8rem!important}
+}
+@media (max-width:359px) and (orientation:portrait){
+  html body[data-tab=rec] #recCompactTools>#imp1{padding:0 8px!important}
+  html body[data-tab=rec] #recCompactTools>#imp1 .impTxt b{font-size:.72rem!important}
+  html body[data-tab=rec] #recCompactTools>#imp1 .impTxt b::before{content:none!important}
+}
 </style>
+<script id="hitomi-r7-27-js">
+/* R7.27: "Which cells to hear" (#refPanel) and the status sentence (#msg) get a shared row (#statusRow). It is display:contents everywhere except phones held upright (see the style block),
+   so nothing else changes. Both nodes keep their ids and are only moved, so every existing getElementById / querySelector keeps working. */
+(function(){var r=document.getElementById('refPanel'),m=document.getElementById('msg');
+  if(!r||!m||document.getElementById('statusRow'))return;
+  var w=document.createElement('div');w.id='statusRow';r.parentNode.insertBefore(w,r);w.appendChild(r);w.appendChild(m)})();
+/* R7.27: on phones held upright the import button (#imp1) lives in the header toolbar (#recCompactTools); everywhere else it stays in its own row (#impRow > .impTop). The node is only moved,
+   so its click handler and id keep working. The (i) tips button stays with the hidden row, so on those phones the three import tips are not shown; the message after an import says what matters
+   (match the BPM, alignment result). */
+(function(){var mq=window.matchMedia('(max-width:599px) and (orientation:portrait)');
+  function place(){var b=document.getElementById('imp1'),bar=document.getElementById('recCompactTools'),top=document.querySelector('#impRow .impTop');
+    if(!b||!bar||!top)return;
+    if(mq.matches){if(b.parentNode!==bar)bar.insertBefore(b,bar.firstChild)}
+    else if(b.parentNode!==top)top.insertBefore(b,top.firstChild)}
+  function boot(){place();if(mq.addEventListener)mq.addEventListener('change',place);else if(mq.addListener)mq.addListener(place)}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
+  setTimeout(place,300)})();
+</script>
 </body>
 </html>
