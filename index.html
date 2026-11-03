@@ -3,7 +3,7 @@
   瞳 Hitomi  Version 1.0  (single-file recorder: Setup > Record > Mix > Export)
   VERSION 1.0 -- first numbered release. This file is the build that was developed as 'v3.0 R7.25' (the old v3.0 / R-numbers were an internal working series and are not version numbers).
   From here on the app is numbered 1.0, 1.1 ... Every entry below that starts with 'R' is the history of that working series, kept so each decision can still be traced.
-  Build 3 (internal id R7.27). Version 1.0 stays 1.0; this build changes how the app lines cells up, the phone preview size and the wording of Setup > More settings:
+  Build 3 (internal ids R7.27, R7.28, R7.29). Version 1.0 stays 1.0; this build changes how the app lines cells up, the phone preview size and the wording of Setup > More settings:
   (1) Auto-align uses a spectral onset feature (short FFT, 34 narrow bands, rising levels only) instead of loudness only. In a synthetic test with legato parts (30 ms pitch glide, with and without a loudness dip, down to 5 dB noise) the old feature accepted 0-1 of 8 and, with the +-150 ms window, placed 3 of 4 accepted cells wrong; the new one accepted 8 of 8 with a median error of 2 ms. Staccato material is unchanged (8 of 8, ~1 ms). Truly unrelated rhythms are still refused (0 of 16); two different parts with the same rhythm on the same click grid can still be accepted (4 of 8 in the test, 1 of them wrong), as they could with the old feature. The acceptance limit moved from 0.30 to 0.35 (same rhythm 0.40-0.81, unrelated 0.08-0.32 in 60 synthetic pairs).
   (2) Two takes that were both recorded to the click get a gentle preference for staying close to where they are.
   (3) Setup > Headphone sync: the two sliders (5 ms steps) now have a number box (1 ms steps, -300 to +300).
@@ -11,6 +11,9 @@
   (5) Record and Mix show the preview at the same size and position, and on phones held upright the preview is bigger (see the hitomi-r7-27 style block and script). On those phones the Import button moves into the top toolbar (it would otherwise sit under the red button) and the (i) import tips are not shown.
   (6) Setup > More settings: clearer wording. The microphone list says the choice is not saved and that some Android phones (Samsung with a USB-C headset) force the headset microphone while iPad Safari follows the choice; the two different 'Auto' options of the video file size are named; the draft-saving note sits beside its checkbox; headphone sync describes the whole procedure; the two manual sliders say what they move; the keyboard shortcuts (Space, P) are listed.
   Real recordings have not been measured; the numbers above are from generated test sounds.
+  R7.28 (finding F-01): Auto-align could accept a wrong position when the true offset lay outside the search window and the music sat on a regular rhythmic grid (it then landed about one grid step, ~900 ms, away). The correlation is now also computed out to +-2.5 s; a match inside the window is refused when a stronger match exists just outside it (ratio 1.05; 1.15 still let 3 of 28 through, 1.0 and below refused more real matches). A refused result keeps the cell where the click placed it ('adjust by hand' note), exactly as for any other unclear case. On generated sound wrong accepts fell from 63 to 4 of 280 (none on grid-locked music; the 4 are irregular, human-like timing). A first attempt (agreement of the first and second half of the take) was measured and not used: a regular rhythm gives the same wrong shift in both halves.
+  R7.28 also (finding F-02): the analysis of a long take handed control back to the page too rarely. On a 4x slower CPU (a phone stand-in) a 3-minute take froze the page for up to 0.57 s in the correlation, 0.45 s in the spectral analysis and 0.3 s in the original loudness feature novelty(). The correlation and every loop of the analysis now give the page a turn every ~20 ms (same computation, same results: 92 of 92 test pairs identical, novelty() byte-identical); the extra strips outside the search window are only computed for a result that would otherwise be accepted. Also: on phones, after a change of picture ratio the Import row could briefly reappear under the red Record button (412x915); fixed.
+  R7.29 (findings F-03, F-04): crash recovery no longer offers an empty draft (under 20 KB or under 1 s), shows the length in seconds, and puts a recovered take into an empty cell instead of replacing a recording that is already in the cell (it only replaces when no cell is free, and then says so). When the microphone the player chose is no longer there (unplugged USB-C headset, dropped Bluetooth) the app falls back to the system default and says so; the messages now name the real cause (no microphone found / microphone busy / permission) instead of always 'allow permission and use HTTPS'.
   Build 2 (internal id R7.26). Version 1.0 stays 1.0; this build adds, on top of the first Version 1.0 build (R7.25):
   (1) Setup page: 'Version 1.0' at the bottom.
   (2) Export > Quality: 'Small' and 'Standard' are always the same pixel size and differ only in bit rate, which a player cannot read; the chips now say 'Smallest file' / 'More detail' and a line says how much
@@ -3151,17 +3154,34 @@ const sliceFor=r=>/video\/mp4/i.test((r&&r.mimeType)||'')?1000:undefined;
    calibration and the level check ('Level check' left Record dead) because each of them waited for it with nothing to end the wait. Returns the stream state, or 'timeout'. */
 const getStreamT=(ms)=>Promise.race([getStream(),new Promise(r=>setTimeout(()=>r('timeout'),ms||20000))]);
 const NOANS=()=>LL('相機或麥克風沒有回應（可能正等你允許權限）。請允許後再試。','The camera or microphone did not answer (it may be waiting for you to allow access). Allow it, then try again.');
+/* R7.29 (F-04): what went wrong with the microphone, in words that point at the real cause. Before, every failure said "allow permission and use HTTPS", also when the real cause was an unplugged USB-C headset. */
+const micErrMsg=e=>{const n=(e&&e.name)||'';
+  if(n==='NotFoundError'||n==='OverconstrainedError'||n==='DevicesNotFoundError')return LL('找不到可用的麥克風。請接上麥克風或耳機，或在「準備 › 更多設定」把錄音裝置改回系統預設。','No usable microphone was found. Plug one in, or set the input device back to System default in Setup > More settings.');
+  if(n==='NotReadableError'||n==='AbortError'||n==='TrackStartError')return LL('麥克風無法啟動，可能正被其他 App 使用。請關閉其他用到麥克風的 App 後再試。','The microphone could not start; another app may be using it. Close other apps that use the microphone, then try again.');
+  return LL('無法使用麥克風。請在瀏覽器網址列允許麥克風權限，並用 HTTPS 網址開啟。','Cannot use the microphone. Allow microphone permission in the browser address bar and open the page over HTTPS.')};
+/* R7.29 (F-04): getUserMedia, but when the microphone the player CHOSE (micId) has gone (unplugged USB-C headset, dropped Bluetooth) fall back to the system default and say so, instead of failing.
+   The retry repeats the identical request except for the device, so a missing camera or a refused permission is not mistaken for a missing microphone: then micId is kept and the original error is raised.
+   A device that exists but is busy (NotReadableError) is not replaced silently. */
+async function gumMic(c){
+  try{return await navigator.mediaDevices.getUserMedia(c)}
+  catch(e){const n=e&&e.name;
+    if(!micId||!(n==='OverconstrainedError'||n==='NotFoundError'))throw e;
+    const gone=micId;micId='';
+    try{const st=await navigator.mediaDevices.getUserMedia({...c,audio:audioC()});
+      warn('mic',()=>LL('⚠ 你選的麥克風已無法使用，已改用系統預設麥克風。','⚠ The microphone you chose is not available; using the system default microphone.'));
+      return st}
+    catch(e2){micId=gone;throw e}}}
 async function getStream(wantVideo=true){
   if(AO)wantVideo=false;
   if(stream&&stream.active&&(AO?audioOnly:(!audioOnly||!wantVideo)))return true;
   if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}
   const au=audioC();
-  if(!wantVideo){try{stream=await navigator.mediaDevices.getUserMedia({audio:au});audioOnly=true;if(AO)warn('cam')}
-    catch(e){msg(LL('無法使用麥克風。請在瀏覽器網址列允許麥克風權限，並使用 HTTPS 網址開啟。','Cannot use the microphone. Allow microphone permission in the browser address bar and open the page over HTTPS.'));return false}}
-  else try{stream=await navigator.mediaDevices.getUserMedia({video:camC(),audio:au});audioOnly=false;warn('cam')}
-  catch(e){try{stream=await navigator.mediaDevices.getUserMedia({audio:au});audioOnly=true;
+  if(!wantVideo){try{stream=await gumMic({audio:au});audioOnly=true;if(AO)warn('cam')}
+    catch(e){msg(micErrMsg(e));return false}}
+  else try{stream=await gumMic({video:camC(),audio:au});audioOnly=false;warn('cam')}
+  catch(e){try{stream=await gumMic({audio:au});audioOnly=true;
       warn('cam',(n=>()=>LL('⚠ 相機無法使用（'+n+'），目前只錄聲音。請允許相機權限，或改用 Safari／Chrome 直接開啟。','⚠ Camera unavailable ('+n+'), recording audio only. Allow camera permission or open in Safari/Chrome directly.'))((e&&e.name)||LL('未知原因','unknown reason')));msg(LL('相機無法使用，改為只錄聲音。','Camera unavailable - recording audio only.'))}
-    catch(e2){msg(LL('無法使用麥克風。請在瀏覽器網址列允許麥克風權限，並用 HTTPS 網址開啟。','Cannot use the microphone. Allow microphone permission in the browser address bar and open the page over HTTPS.'));return false}}
+    catch(e2){msg(micErrMsg(e2));return false}}
   if(stream.getAudioTracks().length){
     const c=ctx(),s=c.createMediaStreamSource(stream);an=c.createAnalyser();an.fftSize=8192;s.connect(an);pkV=-90;barV=-90;clipL=false;if(!meterRun){meterRun=true;meter()}}
   listMics();return true;
@@ -3373,9 +3393,9 @@ async function novelty(i){
   const b=await bufOf(i);if(!b){c.nov=null;return null}
   const d=b.getChannelData(0),hop=Math.max(1,Math.round(b.sampleRate*NHOP)),win=hop*2,n=Math.floor((d.length-win)/hop)+1;
   if(n<16){c.nov=null;return null}
-  const E=new Float32Array(n);let top=-9;
+  const E=new Float32Array(n);let top=-9,t0=performance.now();   /* R7.28 (F-02): hands control back every ~20 ms; the result is unchanged */
   for(let f=0;f<n;f++){let s=0;const o=f*hop;for(let k=0;k<win;k++){const x=d[o+k];s+=x*x}
-    E[f]=Math.log10(1e-7+Math.sqrt(s/win));if(E[f]>top)top=E[f]}
+    E[f]=Math.log10(1e-7+Math.sqrt(s/win));if(E[f]>top)top=E[f];if((f&1023)===1023&&performance.now()-t0>20){await new Promise(res=>setTimeout(res,0));t0=performance.now()}}
   const S=new Float32Array(n);
   for(let f=0;f<n;f++){let a=0,m=0;for(let q=-1;q<=1;q++){const j=f+q;if(j>=0&&j<n){a+=E[j];m++}}S[f]=a/m}
   const U=new Float32Array(n);
@@ -3411,21 +3431,21 @@ async function noveltyMB(i){
   const b=await bufOf(i);if(!b){c.nov2=null;return null}
   const d=b.getChannelData(0),sr=b.sampleRate,hop=Math.max(1,Math.round(sr*NHOP)),n=Math.floor((d.length-hop*2)/hop)+1;
   if(n<16){c.nov2=null;return null}
-  const NF=MB_NF,T=mbTab(),{rev,cs,sn,win,re,im}=T,M=Math.max(1,Math.round(sr/11025)),sr2=sr/M,L=Math.floor(d.length/M),x=new Float32Array(L);
-  for(let k=0;k<L;k++){let q=0;for(let j=0;j<M;j++)q+=d[k*M+j];x[k]=q/M}
+  const NF=MB_NF,T=mbTab(),{rev,cs,sn,win,re,im}=T,M=Math.max(1,Math.round(sr/11025)),sr2=sr/M,L=Math.floor(d.length/M),x=new Float32Array(L);let t0=performance.now();
+  for(let k=0;k<L;k++){let q=0;for(let j=0;j<M;j++)q+=d[k*M+j];x[k]=q/M;if((k&32767)===32767&&performance.now()-t0>20){await new Promise(res=>setTimeout(res,0));t0=performance.now()}}
   const binHz=sr2/NF,e=[];let bin=Math.max(1,Math.round(90/binHz));const bmax=Math.min(NF/2,Math.floor(4000/binHz));
   while(bin<bmax){e.push(bin);bin=Math.max(bin+1,Math.round(bin*1.1225))}e.push(bmax);
   const nb=e.length-1;if(nb<4){c.nov2=null;return null}
-  const E=new Float32Array(n*nb);let tm=-99,t0=performance.now();
+  const E=new Float32Array(n*nb);let tm=-99;t0=performance.now();
   for(let f=0;f<n;f++){
     const st=Math.round((f*hop+hop)/M)-NF/2;
     for(let k=0;k<NF;k++){const j=st+k;re[rev[k]]=(j>=0&&j<L?x[j]:0)*win[k];im[rev[k]]=0}
     for(let len=2;len<=NF;len<<=1){const h=len>>1,step=NF/len;
       for(let p=0;p<NF;p+=len)for(let j=0,t=0;j<h;j++,t+=step){const a=p+j,bb=a+h,wr=cs[t],wi=sn[t],tr=re[bb]*wr-im[bb]*wi,ti=re[bb]*wi+im[bb]*wr;re[bb]=re[a]-tr;im[bb]=im[a]-ti;re[a]+=tr;im[a]+=ti}}
     for(let q=0;q<nb;q++){let s=0;for(let k=e[q];k<e[q+1];k++)s+=re[k]*re[k]+im[k]*im[k];const v=Math.log10(1e-9+Math.sqrt(s/(e[q+1]-e[q])));E[f*nb+q]=v;if(v>tm)tm=v}
-    if((f&63)===63&&performance.now()-t0>25){await new Promise(r=>setTimeout(r,0));t0=performance.now()}}
+    if((f&63)===63&&performance.now()-t0>20){await new Promise(res=>setTimeout(res,0));t0=performance.now()}}
   const fl=tm-1.5,U=new Float32Array(n);
-  for(let f=1;f<n;f++){let u=0;for(let q=0;q<nb;q++){const cu=Math.max(E[f*nb+q],fl),pv=Math.max(E[(f-1)*nb+q],fl);if(cu>pv)u+=cu-pv}U[f]=u}
+  for(let f=1;f<n;f++){let u=0;for(let q=0;q<nb;q++){const cu=Math.max(E[f*nb+q],fl),pv=Math.max(E[(f-1)*nb+q],fl);if(cu>pv)u+=cu-pv}U[f]=u;if((f&2047)===2047&&performance.now()-t0>20){await new Promise(res=>setTimeout(res,0));t0=performance.now()}}
   const V=new Float32Array(n),W=[1,2,3,2,1];let mean=0;
   for(let f=0;f<n;f++){let a=0;for(let z=-2;z<=2;z++){const j=f+z;if(j>=0&&j<n)a+=W[z+2]*U[j]}V[f]=a/9;mean+=V[f]}
   mean/=n;let nn=0;for(let f=0;f<n;f++){V[f]-=mean;nn+=V[f]*V[f]}
@@ -3434,27 +3454,51 @@ async function noveltyMB(i){
   V.hs=hop/sr;c.nov2=V;return V}
 const ALIGN_FEAT='mb';   /* 'mb' = the spectral feature above, 'amp' = the old loudness-only one */
 const alignFeat=k=>ALIGN_FEAT==='amp'?novelty(k):noveltyMB(k);
+/* R7.28 (F-02): the same correlation as xcorr(), but it hands control back to the page every ~20 ms. Over 3 minutes of audio one correlation is tens of millions of multiplications; on a 4x slower CPU
+   (a phone) the old single loop kept the page busy for about 0.6 s. */
+async function xcorrPart(a,b,L0,L1){
+  const r=new Float32Array(L1-L0+1);let t0=performance.now();
+  for(let L=L0;L<=L1;L++){let s=0;const n0=Math.max(0,-L),n1=Math.min(a.length,b.length-L);
+    for(let n=n0;n<n1;n++)s+=a[n]*b[n+L];r[L-L0]=s;
+    if((L&3)===0&&performance.now()-t0>20){await new Promise(res=>setTimeout(res,0));t0=performance.now()}}
+  return r}
+/* R7.28 (F-01): a match inside the search window is only trusted if no stronger match exists just OUTSIDE it. A false accept happens when the real offset is beyond the window: the music repeats on the
+   rhythmic grid, so the correlation shows a smaller copy of the true peak one grid step inside the window, while the real (larger) peak sits outside. The correlation is therefore also computed out to
+   +-ALIGN_WIDE_MS (raw, without the click-preference weighting); if the best value outside the window is more than ALIGN_WIDE_RATIO times the best value inside, the result is refused.
+   Measured with ratio 1.05 on generated sound (14 pairs x 4 offsets x 5 scenarios): wrong accepts 63 -> 4 (none on grid-locked music); ratio 1.15 still let 3 of 28 through, 1.0 and below refused more real matches.
+   (F-02) The outside strips cost about 4x the normal search, so they are only computed for a result that would otherwise be accepted; a refused result is refused either way. */
+const ALIGN_WIDE_MS=2500,ALIGN_WIDE_RATIO=1.05;
 /* 將第 i 格同已就位嘅 refs 比較，回傳建議位置 eff（ms，已含延遲補償嘅時間軸位置）同信心 */
 async function alignOne(i,refs,searchMs){
   const xi=await alignFeat(i);if(!xi)return null;
   const hopMs=(xi.hs||NHOP)*1000,R=Math.max(4,Math.round(searchMs/hopMs)),m0=Math.round(effOf(i)/hopMs),part=[];
   for(const j of refs){if(j===i)continue;const xj=await alignFeat(j);if(xj)part.push({xj,ej:effOf(j),rec:!!(cells[i]&&cells[i].sync&&cells[j]&&cells[j].sync)})}
   if(!part.length)return null;
-  const sc=new Float32Array(2*R+1);let dl=0;
+  const sc=new Float32Array(2*R+1),raw=new Float32Array(2*R+1);let dl=0;
   for(const p of part){
-    const rj=Math.round(p.ej/hopMs),base=rj-m0;dl+=p.ej-rj*hopMs;
-    const r=xcorr(p.xj,xi,base-R,base+R);
+    const rj=Math.round(p.ej/hopMs),base=rj-m0;dl+=p.ej-rj*hopMs;p.base=base;
+    const r=await xcorrPart(p.xj,xi,base-R,base+R);
     /* R7.27 metronome prior: two takes that were both recorded to the same click already sit close together (the click and the beat-grid fit placed them), so a far-away peak is
        more likely a false match than a real one. Their scores fall off gently with distance from the current position (down to 75% at the edge of the window). Imported files have
        no such placement and are not touched. */
-    for(let k=-R;k<=R;k++)sc[k+R]+=r[R-k]/part.length*(p.rec?1-ALIGN_PRIOR*(k/R)*(k/R):1)}
+    for(let k=-R;k<=R;k++){const w=(p.rec?1-ALIGN_PRIOR*(k/R)*(k/R):1)/part.length;sc[k+R]+=r[R-k]*w;raw[k+R]+=r[R-k]/part.length}}
   dl/=part.length;
   let bi=0;for(let k=1;k<sc.length;k++)if(sc[k]>sc[bi])bi=k;
   let s2=0;for(let k=1;k<sc.length-1;k++){if(Math.abs(k-bi)>=6&&sc[k]>=sc[k-1]&&sc[k]>=sc[k+1]&&sc[k]>s2)s2=sc[k]}
   const pk=sc[bi];let fr=0;
   if(bi>0&&bi<sc.length-1){const y0=sc[bi-1],y1=sc[bi],y2=sc[bi+1],den=y0-2*y1+y2;if(den<0)fr=Math.max(-.5,Math.min(.5,.5*(y0-y2)/den))}
   const edge=bi<=1||bi>=sc.length-2;
-  return{eff:(m0+(bi-R)+fr)*hopMs+dl,pk,s2,ok:pk>=ALIGN_PK&&!edge&&(s2<=0||pk>=1.25*s2)};
+  let ok=pk>=ALIGN_PK&&!edge&&(s2<=0||pk>=1.25*s2),wide=null;
+  const Rw=Math.max(R,Math.round(ALIGN_WIDE_MS/hopMs));
+  if(ok&&Rw>R){
+    const outL=new Float32Array(Rw-R),outR=new Float32Array(Rw-R);
+    for(const p of part){   /* the two strips just outside the window: shifts -Rw..-R-1 and R+1..Rw */
+      const rr=await xcorrPart(p.xj,xi,p.base-Rw,p.base-R-1),rl=await xcorrPart(p.xj,xi,p.base+R+1,p.base+Rw);
+      for(let j=0;j<Rw-R;j++){outL[j]+=rr[j]/part.length;outR[j]+=rl[j]/part.length}}
+    let inMax=-1e9,outMax=-1e9;for(let k=0;k<raw.length;k++)if(raw[k]>inMax)inMax=raw[k];
+    for(let j=0;j<Rw-R;j++){if(outR[j]>outMax)outMax=outR[j];if(outL[j]>outMax)outMax=outL[j]}
+    wide={inMax,outMax,ok:!(outMax>0&&outMax>ALIGN_WIDE_RATIO*inMax)};if(!wide.ok)ok=false}
+  return{eff:(m0+(bi-R)+fr)*hopMs+dl,pk,s2,wide,ok};
 }
 /* 5-9-4：窄窗（已校準延遲）結果要同寬窗互相印證，避免真實偏差超出窗口時撞到假峰值而誤判成功 */
 async function alignRobust(i,refs,narrowMs){
@@ -3813,7 +3857,7 @@ async function listMics(){try{const d=(await navigator.mediaDevices.enumerateDev
   d.forEach((x,k)=>{if(x.deviceId==='default')return;const o=document.createElement('option');o.value=x.deviceId;o.textContent=x.label||(LL('麥克風 ','Microphone ')+(k+1));e.appendChild(o)});
   e.value=[...e.options].some(o=>o.value===cur)?cur:'';micId=e.value}catch(err){}}
 $('#adev').onchange=async e=>{if(recording||busy||counting){e.target.value=micId;return}
-  micId=e.target.value;
+  micId=e.target.value;warn('mic');
   if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}
   if(document.body.dataset.tab==='rec')await previewCam();else await getStream(false);
   msg(LL('已切換錄音裝置。','Input device changed.'))};
@@ -4504,20 +4548,34 @@ async function spaceFree(){try{if(!(navigator.storage&&navigator.storage.estimat
 const spaceMins=(free,got,rate,k)=>Math.max(0,(free-got-SPACE_MARGIN)/(k*rate)/60);
 const spaceMsg=m=>LL('⚠ 儲存空間只剩'+(m<1?'不到 1':'約 '+Math.floor(m))+' 分鐘可錄。快滿時會自動停止並保留已錄內容；建議先匯出備份並刪除不需要的專案。','⚠ '+(m<1?'Less than 1':'Only about '+Math.floor(m))+' min of recording space left. Recording stops automatically when it runs out and keeps what is recorded; export a backup and delete projects you do not need first.');
 async function spaceStart(RD){const free=await spaceFree();if(free==null||!recording)return;const m=spaceMins(free,0,recRate(),RD?2:1);if(m<5)msg(spaceMsg(m),'err')}
+/* R7.29 (F-03): crash recovery used to offer whatever the draft store held. With an MP4 recorder that is often only the container header (about 1 KB, no sound), yet the prompt said "recovered" and
+   accepting it REPLACED a good recording in that cell. Now: (1) a draft with nothing usable (under 20 KB, or a decoded length under 1 s) is dropped with a plain message; (2) the prompt gives the length in
+   seconds when it can be decoded; (3) when the cell the draft came from already holds a recording and there is an empty cell, the draft goes into the empty cell, so a recovery never overwrites an
+   existing take unless there is no free cell (the prompt then says so). Drafts under 15 s old are still left alone (another tab may be recording). */
+const RD_MIN_BYTES=20*1024,RD_MIN_SEC=1,RD_DECODE_MAX=60*1048576;
 async function rdRecover(){
   try{if(restoreFailed)return;const m=await DB.get('rd:meta');if(!m)return;
     if(Date.now()-(m.t||0)<15000)return;   /* 15 秒內仍有寫入：可能係另一個分頁正在錄音，不要碰 */
     const drop=async()=>{for(let k=0;k<(m.n||0);k++)await DB.del('rd:'+k).catch(()=>{});await DB.del('rd:meta').catch(()=>{})};
     const parts=[];for(let k=0;k<(m.n||0);k++){const b=await DB.get('rd:'+k);if(b)parts.push(b)}
     if(!parts.length||m.pid!==curId||!(m.idx>=0&&m.idx<N)||recording||busy){await drop();return}
-    const blob=new Blob(parts,{type:m.type||'video/webm'}),mb=(blob.size/1048576).toFixed(1);
-    if(!confirm(LL('上次錄音中途中斷，已救回第 '+(m.idx+1)+' 格的錄音（約 '+mb+' MB）。要放入嗎？'+(cells[m.idx]?'\n（會取代該格現有錄音）':''),'The last recording was interrupted. A partial take for cell '+(m.idx+1)+' was recovered (about '+mb+' MB). Put it in?'+(cells[m.idx]?'\n(It will replace the current recording in that cell.)':'')))){await drop();return}
-    const old=cells[m.idx];if(old)URL.revokeObjectURL(old.url);
-    cells[m.idx]={vol:1,mute:false,solo:false,off:0,lat:m.lat||0,...cx({}),blob,url:URL.createObjectURL(blob)};
+    const blob=new Blob(parts,{type:m.type||'video/webm'});
+    let sec=null;
+    if(blob.size>=RD_MIN_BYTES&&blob.size<=RD_DECODE_MAX){try{sec=(await ctx().decodeAudioData(await blob.arrayBuffer())).duration}catch(e){sec=null}}
+    if(blob.size<RD_MIN_BYTES||(sec!==null&&sec<RD_MIN_SEC)){await drop();
+      msg(LL('上次錄音中途中斷，但沒有錄到可以救回的內容（有些瀏覽器要按「停止」後才會寫出錄音）。','The last recording was interrupted, but nothing usable had been written yet (some browsers only write the recording when you press Stop).'),'warn');return}
+    let tgt=m.idx;const occ=!!cells[m.idx];
+    if(occ){for(let k=0;k<N;k++)if(!cells[k]){tgt=k;break}}   /* not findIndex: the array can be shorter than N, so a cell that was never recorded may not exist in it */
+    const len=sec!==null?LL('約 '+Math.round(sec)+' 秒','about '+Math.round(sec)+' s'):LL('約 '+(blob.size/1048576).toFixed(1)+' MB','about '+(blob.size/1048576).toFixed(1)+' MB');
+    const note=!occ?'':tgt!==m.idx?LL('\n第 '+(m.idx+1)+' 格已有錄音，所以會放進空的第 '+(tgt+1)+' 格，不會取代原有錄音。','\nCell '+(m.idx+1)+' already has a recording, so this goes into the empty cell '+(tgt+1)+' and nothing is replaced.')
+      :LL('\n⚠ 沒有空格：放入會取代第 '+(m.idx+1)+' 格現有錄音，無法還原。','\n⚠ No empty cell: putting it in REPLACES the recording in cell '+(m.idx+1)+' and cannot be undone.');
+    if(!confirm(LL('上次錄音中途中斷，已救回一段錄音（'+len+'）。要放入第 '+(tgt+1)+' 格嗎？','The last recording was interrupted. A partial take ('+len+') was recovered. Put it in cell '+(tgt+1)+'?')+note)){await drop();return}
+    const old=cells[tgt];if(old)URL.revokeObjectURL(old.url);
+    cells[tgt]={vol:1,mute:false,solo:false,off:0,lat:m.lat||0,...cx({}),blob,url:URL.createObjectURL(blob)};
     hideTake();render();save();saveOk=false;await saveNow();
     if(!saveOk){msg(LL('已救回，但未能儲存到瀏覽器（空間可能不足）。草稿保留，請先匯出或清出空間後重新整理。','Recovered, but could not save to the browser (storage may be full). The draft is kept; export or free some space, then reload.'),'warn');return}
     await drop();
-    msg(LL('已救回第 '+(m.idx+1)+' 格。中斷位置之後的內容會缺失，請檢查後再決定是否重錄。','Recovered cell '+(m.idx+1)+'. Anything after the interruption is missing; check it and re-record if needed.'),'ok')
+    msg(LL('已救回第 '+(tgt+1)+' 格。中斷位置之後的內容會缺失，請檢查後再決定是否重錄。','Recovered cell '+(tgt+1)+'. Anything after the interruption is missing; check it and re-record if needed.'),'ok')
   }catch(e){}}
 window.addEventListener('beforeunload',e=>{if(recording){e.preventDefault();e.returnValue=''}});
 let camLk=null;
@@ -5472,7 +5530,7 @@ body[data-tab=rec] #meter[data-lv=clip][data-level^="曾"]::before,body[data-tab
   html body[data-tab=rec] .dock .recbtn{height:56px;border-radius:28px}
   html body[data-tab=rec] main{padding-bottom:calc(140px + env(safe-area-inset-bottom,0px))}
   /* the import button moves up into the header toolbar (next to the camera flip button); the row that held it would now sit under the red button */
-  html body[data-tab=rec] #impRow{display:none!important}
+  html body[data-tab=rec] #impRow,html body[data-tab=rec].roomy:not(.recing) #impRow{display:none!important}   /* R7.28: the older 'roomy' rule (import row inline when there is spare height) must not bring the row back; only the (i) button is left in it, and for a moment after a ratio change it sat under the red button */
   html body[data-tab=rec] #recCompactTools>#imp1{display:inline-flex!important;align-items:center;width:auto!important;min-width:0;height:36px!important;min-height:36px!important;padding:0 11px!important;border-radius:999px!important;white-space:nowrap}
   html body[data-tab=rec] #recCompactTools>#imp1 .impTxt b{font-size:.8rem!important}
 }
