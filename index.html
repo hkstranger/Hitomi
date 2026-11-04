@@ -3,7 +3,7 @@
   瞳 Hitomi  Version 1.0  (single-file recorder: Setup > Record > Mix > Export)
   VERSION 1.0 -- first numbered release. This file is the build that was developed as 'v3.0 R7.25' (the old v3.0 / R-numbers were an internal working series and are not version numbers).
   From here on the app is numbered 1.0, 1.1 ... Every entry below that starts with 'R' is the history of that working series, kept so each decision can still be traced.
-  Build 3 (internal ids R7.27, R7.28, R7.29). Version 1.0 stays 1.0; this build changes how the app lines cells up, the phone preview size and the wording of Setup > More settings:
+  Build 3 (internal ids R7.27, R7.28, R7.29, R7.30). Version 1.0 stays 1.0; this build changes how the app lines cells up, the phone preview size and the wording of Setup > More settings:
   (1) Auto-align uses a spectral onset feature (short FFT, 34 narrow bands, rising levels only) instead of loudness only. In a synthetic test with legato parts (30 ms pitch glide, with and without a loudness dip, down to 5 dB noise) the old feature accepted 0-1 of 8 and, with the +-150 ms window, placed 3 of 4 accepted cells wrong; the new one accepted 8 of 8 with a median error of 2 ms. Staccato material is unchanged (8 of 8, ~1 ms). Truly unrelated rhythms are still refused (0 of 16); two different parts with the same rhythm on the same click grid can still be accepted (4 of 8 in the test, 1 of them wrong), as they could with the old feature. The acceptance limit moved from 0.30 to 0.35 (same rhythm 0.40-0.81, unrelated 0.08-0.32 in 60 synthetic pairs).
   (2) Two takes that were both recorded to the click get a gentle preference for staying close to where they are.
   (3) Setup > Headphone sync: the two sliders (5 ms steps) now have a number box (1 ms steps, -300 to +300).
@@ -14,6 +14,7 @@
   R7.28 (finding F-01): Auto-align could accept a wrong position when the true offset lay outside the search window and the music sat on a regular rhythmic grid (it then landed about one grid step, ~900 ms, away). The correlation is now also computed out to +-2.5 s; a match inside the window is refused when a stronger match exists just outside it (ratio 1.05; 1.15 still let 3 of 28 through, 1.0 and below refused more real matches). A refused result keeps the cell where the click placed it ('adjust by hand' note), exactly as for any other unclear case. On generated sound wrong accepts fell from 63 to 4 of 280 (none on grid-locked music; the 4 are irregular, human-like timing). A first attempt (agreement of the first and second half of the take) was measured and not used: a regular rhythm gives the same wrong shift in both halves.
   R7.28 also (finding F-02): the analysis of a long take handed control back to the page too rarely. On a 4x slower CPU (a phone stand-in) a 3-minute take froze the page for up to 0.57 s in the correlation, 0.45 s in the spectral analysis and 0.3 s in the original loudness feature novelty(). The correlation and every loop of the analysis now give the page a turn every ~20 ms (same computation, same results: 92 of 92 test pairs identical, novelty() byte-identical); the extra strips outside the search window are only computed for a result that would otherwise be accepted. Also: on phones, after a change of picture ratio the Import row could briefly reappear under the red Record button (412x915); fixed.
   R7.29 (findings F-03, F-04): crash recovery no longer offers an empty draft (under 20 KB or under 1 s), shows the length in seconds, and puts a recovered take into an empty cell instead of replacing a recording that is already in the cell (it only replaces when no cell is free, and then says so). When the microphone the player chose is no longer there (unplugged USB-C headset, dropped Bluetooth) the app falls back to the system default and says so; the messages now name the real cause (no microphone found / microphone busy / permission) instead of always 'allow permission and use HTTPS'.
+  R7.30: the Record tab on phones held upright has its play bar back (R7.27 hid it to make the preview bigger, which took away the way to listen to the takes from the page where you record them). The preview budget on Record and Mix is now 100dvh minus 306 px instead of 260 px, so the preview is 46 px shorter than in R7.27 (360x640, 9:16: 334 px high instead of 380; the original v1.0 had 304 px). The budget is the same with or without a recording, so the preview never jumps when you start or finish a take.
   Build 2 (internal id R7.26). Version 1.0 stays 1.0; this build adds, on top of the first Version 1.0 build (R7.25):
   (1) Setup page: 'Version 1.0' at the bottom.
   (2) Export > Quality: 'Small' and 'Standard' are always the same pixel size and differ only in bit rate, which a player cannot read; the chips now say 'Smallest file' / 'More detail' and a line says how much
@@ -5486,9 +5487,8 @@ body[data-tab=rec] #meter[data-lv=clip][data-level^="曾"]::before,body[data-tab
       Before, each page had its own height budget, so the preview changed size every time you switched tab (360x640 phone, 1:1: 304 px on Record, 348 px on Mix; 1280x800 screen:
       470 px and 560 px; landscape phone 278 px and 212 px). Mix now uses exactly the height Record uses at every screen size (same order, same specificity as the Record rules,
       so the same one wins).
-   B. Phones held upright (<= 599 px wide, portrait): the preview is bigger because less is stacked under it (budget: 100dvh minus 260 px for Record and Mix alike; Record while
-      recording needs 256).
-      - Record: the play bar is hidden (the take bar has "Last 10 s" and "Full take", Mix has the play bar, and the P key still plays). It cost 50 px.
+   B. Phones held upright (<= 599 px wide, portrait): the preview is bigger because less is stacked under it (budget: 100dvh minus 306 px for Record and Mix alike, play bar included; since R7.30. R7.27 had 260 px with the Record play bar hidden).
+      - (R7.30: the Record play bar is NOT hidden any more; the budget below is 100dvh minus 306 px instead of 260 px so it fits.)
       - Record: the level bar is a thinner strip (36 -> 26 px).
       - Record: "Which cells to hear" and the status sentence share one row (before: two rows, 28 + 16..32 px). Opened, the list pops up over the level bar.
       - Record: while recording, the time / bar / beat readout is 40 px instead of 52 px.
@@ -5508,8 +5508,7 @@ body[data-tab=rec] #meter[data-lv=clip][data-level^="曾"]::before,body[data-tab
 }
 #statusRow{display:contents}
 @media (max-width:599px) and (orientation:portrait){
-  html body[data-tab=rec]:not(.recing),html body[data-tab=rec].recing,html body[data-tab=mix]{--sv:max(200px,calc(100dvh - 260px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px)))!important}
-  html body[data-tab=rec] #tport{display:none!important}
+  html body[data-tab=rec]:not(.recing),html body[data-tab=rec].recing,html body[data-tab=mix]{--sv:max(200px,calc(100dvh - 306px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px)))!important}
   html body[data-tab=rec] #meter,html body[data-tab=rec].recing #meter{padding:2px 8px!important;margin-top:0!important;border-radius:10px!important;gap:6px!important;min-height:0!important}
   html body[data-tab=rec] #meter .mt{height:10px!important}
   html body[data-tab=rec]:not(.recing) #statusRow,html body[data-tab=rec].recing #statusRow:has(#msg.hi,#msg.ok,#msg.err){display:flex;align-items:center;gap:6px;margin:4px 0 0;min-height:30px}
