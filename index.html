@@ -3,7 +3,7 @@
   瞳 Hitomi  Version 1.0  (single-file recorder: Setup > Record > Mix > Export)
   VERSION 1.0 -- first numbered release. This file is the build that was developed as 'v3.0 R7.25' (the old v3.0 / R-numbers were an internal working series and are not version numbers).
   From here on the app is numbered 1.0, 1.1 ... Every entry below that starts with 'R' is the history of that working series, kept so each decision can still be traced.
-  Build 3 (internal ids R7.27, R7.28, R7.29, R7.30). Version 1.0 stays 1.0; this build changes how the app lines cells up, the phone preview size and the wording of Setup > More settings:
+  Build 3 (internal ids R7.27, R7.28, R7.29, R7.30, R7.31, R7.32). Version 1.0 stays 1.0; this build changes how the app lines cells up, the phone preview size and the wording of Setup > More settings:
   (1) Auto-align uses a spectral onset feature (short FFT, 34 narrow bands, rising levels only) instead of loudness only. In a synthetic test with legato parts (30 ms pitch glide, with and without a loudness dip, down to 5 dB noise) the old feature accepted 0-1 of 8 and, with the +-150 ms window, placed 3 of 4 accepted cells wrong; the new one accepted 8 of 8 with a median error of 2 ms. Staccato material is unchanged (8 of 8, ~1 ms). Truly unrelated rhythms are still refused (0 of 16); two different parts with the same rhythm on the same click grid can still be accepted (4 of 8 in the test, 1 of them wrong), as they could with the old feature. The acceptance limit moved from 0.30 to 0.35 (same rhythm 0.40-0.81, unrelated 0.08-0.32 in 60 synthetic pairs).
   (2) Two takes that were both recorded to the click get a gentle preference for staying close to where they are.
   (3) Setup > Headphone sync: the two sliders (5 ms steps) now have a number box (1 ms steps, -300 to +300).
@@ -15,6 +15,8 @@
   R7.28 also (finding F-02): the analysis of a long take handed control back to the page too rarely. On a 4x slower CPU (a phone stand-in) a 3-minute take froze the page for up to 0.57 s in the correlation, 0.45 s in the spectral analysis and 0.3 s in the original loudness feature novelty(). The correlation and every loop of the analysis now give the page a turn every ~20 ms (same computation, same results: 92 of 92 test pairs identical, novelty() byte-identical); the extra strips outside the search window are only computed for a result that would otherwise be accepted. Also: on phones, after a change of picture ratio the Import row could briefly reappear under the red Record button (412x915); fixed.
   R7.29 (findings F-03, F-04): crash recovery no longer offers an empty draft (under 20 KB or under 1 s), shows the length in seconds, and puts a recovered take into an empty cell instead of replacing a recording that is already in the cell (it only replaces when no cell is free, and then says so). When the microphone the player chose is no longer there (unplugged USB-C headset, dropped Bluetooth) the app falls back to the system default and says so; the messages now name the real cause (no microphone found / microphone busy / permission) instead of always 'allow permission and use HTTPS'.
   R7.30: the Record tab on phones held upright has its play bar back (R7.27 hid it to make the preview bigger, which took away the way to listen to the takes from the page where you record them). The preview budget on Record and Mix is now 100dvh minus 306 px instead of 260 px, so the preview is 46 px shorter than in R7.27 (360x640, 9:16: 334 px high instead of 380; the original v1.0 had 304 px). The budget is the same with or without a recording, so the preview never jumps when you start or finish a take.
+  R7.31 (found by a musician-side usage test): (1) the take bar said 'Recording may be too short' on good takes made in WebM (audio-only and 'WebM VP8' recordings): the browser reports the length of a WebM file as Infinity and the app read that as 0 seconds. The length is now the decoded length of the sound; if it cannot be decoded nothing is claimed. (2) The red 'this browser does not save drafts in MP4' box appeared about 4 seconds INTO a take, when the player cannot read or act on it; it now appears after the take, once per page load, in plainer words. (3) Mix > Balance volume gave no visible answer (the status line is hidden on Mix); one line under the buttons now says which cells were raised or lowered, or that they were already equal; it disappears as soon as a volume is changed. (4) F-16: a take can contain clearly less sound than the recorder ran (measured on a one-core test machine with software video encoding: 63-68% on takes made while earlier cells were playing); the take bar now says so when the decoded sound is under 90% of the recorder time and at least 1 s short. (5) F-15 (also in v1.0): when the storage guard stopped a take, the sentence explaining why was replaced a moment later by the camera frame-rate note; it is no longer replaced.
+  R7.32 (leftovers of the musician-side test): (1) a take that is worth redoing (clipped, too quiet, clearly missing sound, under 1 s, recorder started late) now makes Redo the gold main button and OK the grey one, and the take bar stays 20 s; warnings a redo cannot fix (camera frame rate, alignment advice) do not change the buttons. (2) The play-position slider on Record and Mix is 36 px high (was 16); its default 2 px margin is removed so the play bar keeps its 42 px. (3) Export: the loudness and WAV notes no longer quote LUFS or kbps; the numbers remain on the finished-export card.
   Build 2 (internal id R7.26). Version 1.0 stays 1.0; this build adds, on top of the first Version 1.0 build (R7.25):
   (1) Setup page: 'Version 1.0' at the bottom.
   (2) Export > Quality: 'Small' and 'Standard' are always the same pixel size and differ only in bit rate, which a player cannot read; the chips now say 'Smallest file' / 'More detail' and a line says how much
@@ -1251,6 +1253,7 @@ body.aoMode #flip{visibility:hidden}
       <button id="align" class="mixBtn" type="button"><svg class="ic"><use href="#i-wand"/></svg><span class="mbx"><b>自動對齊</b><small>檢查裝置造成的時間差</small></span></button>
       <button id="bal" class="mixBtn" type="button"><svg class="ic"><use href="#i-sliders"/></svg><span class="mbx"><b>平衡音量</b><small>令各格一樣大聲</small></span></button>
     </div>
+    <p class="hint" id="balRes" role="status" style="font-size:.82rem;font-weight:700;color:var(--fg)" hidden></p>
   </div>
   <div class="card alSum" id="alignSum" hidden>
     <button type="button" class="alT" id="alT" aria-expanded="true"><span class="alIc" id="alIc" aria-hidden="true"></span><span class="alHT"><b id="alTitle"></b><small id="alSub"></small></span><span class="alCh" aria-hidden="true">▾</span></button>
@@ -2121,7 +2124,8 @@ function srcRect(vw,vh,bw,bh,c){const z=Math.max(1,(c&&c.zm)||1),k=Math.max(bw/v
   return[(vw-sw)/2*(1+px),(vh-sh)/2*(1+py),sw,sh]}
 function repaint(){stage.querySelectorAll('canvas.vc').forEach(cv=>cv._t=-1);paintKick()}
 function applyBorder(){const w=stage.clientWidth,px=(Math.round(w*bdW/100*10)/10)+'px';if(stage.style.gap!==px){stage.style.gap=px;stage.style.padding=px}stage.style.background=bdC}
-function applyMix(){playing.forEach(o=>{const c=cells[o.i];if(c){o.g.gain.value=mixGain(o.i);if(o.g._hp)o.g._hp.frequency.value=c.hp>0?c.hp:10;if(o.g._pn)o.g._pn.pan.value=c.pan||0;if(o.g._eq)o.g._eq.forEach((f,k)=>f.gain.value=(c.eq||[])[k]||0)}});save();refreshTotal()}
+function applyMix(){{const e=document.getElementById('balRes');if(e)e.hidden=true}   /* R7.31: the 'balanced' line is out of date as soon as any volume changes */
+  playing.forEach(o=>{const c=cells[o.i];if(c){o.g.gain.value=mixGain(o.i);if(o.g._hp)o.g._hp.frequency.value=c.hp>0?c.hp:10;if(o.g._pn)o.g._pn.pan.value=c.pan||0;if(o.g._eq)o.g._eq.forEach((f,k)=>f.gain.value=(c.eq||[])[k]||0)}});save();refreshTotal()}
 const cvol=()=>{const el=$('#cvol');if(!el)return.8;const n=+el.value;return isFinite(n)?Math.max(0,Math.min(1,n)):.8};
 function clickSnd(c,t,f,len,dest){
   const d=Math.min(.06,Math.max(.04,len||.05)),o=c.createOscillator(),g=c.createGain();
@@ -2230,6 +2234,9 @@ function devLatMs(){if(latMs&&!latStale)return latTrue();
 const warns={};
 function warn(k,t){if(t)warns[k]=t;else delete warns[k];warnShow()}
 function warnShow(){const w=$('#stwarn'),v=Object.values(warns).map(x=>typeof x==='function'?x():x);w.textContent=v.join(LL('　','  '));w.hidden=!v.length}
+/* R7.31: shown AFTER a take (once per page load), not in the middle of it: a player cannot read or act on it while playing. */
+let draftTold=false;
+const DRAFT_MSG=()=>LL('⚠ 這個瀏覽器用 MP4 錄音時不會邊錄邊保存。如果錄音中途閃退，正在錄的那一格會遺失。想邊錄邊保存：「準備」›「更多設定」›「錄製編碼」改選 WebM (VP8)。','⚠ In MP4 this browser does not save a draft while recording, so a crash in the middle of a take would lose that take. To save drafts: Setup > More settings > Recording codec > WebM (VP8).');
 const DB={
   open(){return new Promise((res,rej)=>{const r=indexedDB.open('choirgrid',1);r.onupgradeneeded=()=>r.result.createObjectStore('p');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})},
   tx(mode,f){return this.open().then(d=>new Promise((res,rej)=>{let out;const t=d.transaction('p',mode);
@@ -3278,7 +3285,7 @@ async function startRec(i){
    if(gs==='timeout'){busy=false;retMix=false;msg(LL('相機或麥克風沒有回應（可能正等你允許權限）。請允許後再按錄音。','The camera or microphone did not answer (it may be waiting for you to allow access). Allow it, then tap Record again.'),'err');return}
    if(!gs){busy=false;retMix=false;return}}
   const qi=captureInfo();
-  recording=true;prepPhase=true;cancelPre=false;render();camLock(true);latDevCheck();quotaHit=false;lowStop=false;warn('vidq');
+  recording=true;prepPhase=true;cancelPre=false;render();camLock(true);latDevCheck();quotaHit=false;lowStop=false;warn('vidq');warn('draft');
   {await btScan();const ol=A?(A.outputLatency||0):0;
     if(!latMs&&(ol>.1||btName))warn('lat',()=>{const ms=ol>.1?Math.round(ol*1000):0;
       return LL('⚠ 偵測到'+(btName?'藍牙裝置「'+btName+'」':'較大輸出延遲')+(ms?'（約 '+ms+' ms）':'')+'。藍牙延遲不穩定，錄音最準確是用有線耳機；如果一定要用藍牙，請到「準備」頁，打開「更多設定」，按「檢查耳機同步」做一次（約 20 秒），之後每次重新連線都要再檢查。',
@@ -3303,15 +3310,16 @@ async function startRec(i){
   const RD=!!window.indexedDB&&!!($('#rdon')&&$('#rdon').checked),rdT=mr.mimeType||MT||'';
   mr.ondataavailable=e=>{if(e.data.size){chunks.push(e.data);if(RD)rdPut(chunks.length-1,e.data,curId,idx,newLat,rdT)}};
   mr.onstart=()=>{if(!syncTake)syncTake=SYNC2.snapshot(idx,TS);leadLat=SYNC2.recorderStarted(TS,syncTake);syncMeta=SYNC2.meta(syncTake)};
-  mr.onstop=()=>{warn('draft');camLock(false);clearInterval(spaceT);spaceT=0;
+  let draftMiss=false;
+  mr.onstop=()=>{warn('draft',(draftMiss&&!draftTold)?(draftTold=true,DRAFT_MSG):null);camLock(false);clearInterval(spaceT);spaceT=0;
     stopClick();alignPrev=null;clearAlignRep();$('#undoAlign').hidden=true;tp.pos=0;
     const blob=new Blob(chunks,{type:mr.mimeType||'video/webm'});
     const old=cells[idx];if(old)URL.revokeObjectURL(old.url);
-    clearInterval(rt);$('#rtimer').hidden=true;$('#rst').hidden=true;cells[idx]={blob,url:URL.createObjectURL(blob),vol:old?old.vol:1,mute:old?!!old.mute:false,solo:old?!!old.solo:false,off:0,bpm:bpm(),lat:leadLat!=null?leadLat:newLat,syncV:SYNC_V,sync:syncMeta||SYNC2.meta(syncTake),residual:0,clip:clipInfo(),pk:recPk,qi};SYNC2.end(syncTake);
+    clearInterval(rt);$('#rtimer').hidden=true;$('#rst').hidden=true;cells[idx]={blob,url:URL.createObjectURL(blob),vol:old?old.vol:1,mute:old?!!old.mute:false,solo:old?!!old.solo:false,off:0,bpm:bpm(),lat:leadLat!=null?leadLat:newLat,syncV:SYNC_V,sync:syncMeta||SYNC2.meta(syncTake),residual:0,clip:clipInfo(),pk:recPk,qi,recSec:Math.max(0,A.currentTime-TS)+(syncMeta&&typeof syncMeta.lead==='number'?syncMeta.lead/1000:0)};SYNC2.end(syncTake);   /* R7.31: how long the recorder really ran (not saved with the project; only the take bar uses it) */
     recording=false;prepPhase=false;busy=false;recForce=null;if(RD){saveOk=false;saveNow().catch(()=>{}).then(()=>{if(saveOk)rdClear()})}
     let nx=-1;for(let k=0;k<N;k++)if(!cells[k]){nx=k;break}if(nx>=0)cur=nx;
     render();showTake(idx);if(lowStop){lowStop=false;msg(LL('⚠ 儲存空間快滿，已自動停止錄音；已錄的 '+fmtT(lowStopT)+' 已保留。請先匯出備份並刪除不需要的專案，再繼續錄。','⚠ Storage is almost full, so recording stopped automatically; the '+fmtT(lowStopT)+' recorded so far is kept. Export a backup and delete projects you do not need, then continue.'),'err')}else if(cells[idx]&&cells[idx].sync&&typeof cells[idx].sync.lead==='number'&&cells[idx].sync.lead<LATE_MS)msg(LL('⚠ 第 '+(idx+1)+' 格的錄音機比第一拍晚啟動（手機當時較忙），開頭可能被切掉。建議關閉其他 App 後按「重錄」。','⚠ The recorder for cell '+(idx+1)+' started after beat 1 (the device was busy), so the start may be cut off. Close other apps and tap Redo.'),'err');else if(cells[idx]&&cells[idx].clip)msg(LL('第 '+(idx+1)+' 格有削波（最高 '+cells[idx].clip.pk+' dB），聲音會破。建議離遠一點或斜一點吹，按「重錄」再來。','Cell '+(idx+1)+' clipped (peak '+cells[idx].clip.pk+' dB) and will sound distorted. Move back or angle the horn away, then tap Redo.'),'err');else msg(LL('第 '+(idx+1)+' 格錄好了。可以選下一格繼續錄，或到「混音」。','Cell '+(idx+1)+' recorded. Pick the next cell to continue, or go to Mix.'),'ok')   /* R7.25: camera size and 'Sync Engine' were noise; real problems still show in the take bar */;
-    {const w=qiWarn(cells[idx]);if(w.length&&!(cells[idx].clip)&&!(cells[idx].sync&&cells[idx].sync.lead<LATE_MS))msg(LL('⚠ 第 '+(idx+1)+' 格：'+w[0],'⚠ Cell '+(idx+1)+': '+w[0]),'hi')}
+    {const w=qiWarn(cells[idx]);if(w.length&&!/儲存空間快滿|Storage is almost full/.test($('#msg').textContent)&&!(cells[idx].clip)&&!(cells[idx].sync&&cells[idx].sync.lead<LATE_MS))msg(LL('⚠ 第 '+(idx+1)+' 格：'+w[0],'⚠ Cell '+(idx+1)+': '+w[0]),'hi')}
     {const el=stage.children[idx];if(el){el.classList.remove('done');void el.offsetWidth;el.classList.add('done');setTimeout(()=>el.classList.remove('done'),500)}}
     if(retMix){retMix=false;go('mix')}
     verifyTake(idx,blob,Math.max(0,A.currentTime-TS));
@@ -3337,7 +3345,7 @@ async function startRec(i){
       try{mr.start(RD?1000:sliceFor(mr));
         /* R7.24: 'save a draft every second' only works if the recorder hands over data while it runs. Measured: MP4 with a time slice delivers nothing until Stop in the Chromium tested (WebM delivers every second),
            so a crash lost the whole take although the setting promised otherwise. With a 1 s time slice at least 3 pieces should exist after 3.5 s; fewer than 2 (measured: none, or only the file header) means the draft is useless, so say so while there is still time to act. */
-        if(RD)setTimeout(()=>{if(recording&&!counting&&mr&&mr.state==='recording'&&chunks.length<2)warn('draft',()=>LL('⚠ 這個瀏覽器用 MP4 錄音時不會每秒保存草稿，如果閃退，這次錄音會遺失。要啟用請到「更多設定」把「錄製編碼」改為 WebM (VP8)。','⚠ This browser does not save a draft every second while recording in MP4, so a crash would lose this take. To turn drafts on, set Recording codec to WebM (VP8) under More settings.'))},3500)}catch(e){failTake(LL('錄音機無法啟動（相機或麥克風可能被其他 App 佔用）。這次錄音已取消。','The recorder could not start (the camera or microphone may be in use by another app). This take was cancelled.'))}})};
+        if(RD)setTimeout(()=>{if(recording&&!counting&&mr&&mr.state==='recording'&&chunks.length<2)draftMiss=true},3500)}catch(e){failTake(LL('錄音機無法啟動（相機或麥克風可能被其他 App 佔用）。這次錄音已取消。','The recorder could not start (the camera or microphone may be in use by another app). This take was cancelled.'))}})};
   const leadS=Math.min(3,Math.max(.2,gi.length?Math.max(0,...gi.map(k=>(cells[k].lat||0)))/1000+.12:.2));
   syncTake=SYNC2.begin(idx,0);
   prepPhase=false;TS=cancelPre?0:await countIn(early,leadS);cancelPre=false;   /* R7.22: Stop pressed during the preparation cancels the take (it used to be ignored while the button already said Stop) */
@@ -3615,6 +3623,11 @@ async function levelOf(i){
   for(let f=0;f<n;f++)if(P[f]>=th){a+=P[f];m++}
   c.lvl=m?Math.sqrt(a/m):0;return c.lvl;
 }
+/* R7.31: what the Balance button did, in one line under the button (the Mix tab hides the status line, so the message used to be invisible there) */
+function balReport(ids,vb){const e=$('#balRes');if(!e)return;
+  const ch=ids.map((i,k)=>({i,db:20*Math.log10((cells[i].vol||1)/(vb[k]||1))})).filter(x=>Math.abs(x.db)>=.5);
+  e.textContent=ch.length?LL('已平衡：'+ch.map(x=>cellN(x.i+1)+(x.db>0?' 提高 ':' 降低 ')+Math.abs(x.db).toFixed(1)+' dB').join('、')+'。','Balanced: '+ch.map(x=>cellN(x.i+1)+(x.db>0?' up ':' down ')+Math.abs(x.db).toFixed(1)+' dB').join(', ')+'.'):LL('各格音量本來就差不多，沒有改動。','The cells were already about equally loud; nothing was changed.');
+  e.hidden=false}
 /* only＝剛錄好嗰格：只調呢格，以其他格現時嘅實際響度為目標；冇傳＝手動按鈕，全部以中位數為目標 */
 async function autoBalance(only,pre){
   if(only!=null&&typeof only!=='number')only=undefined;
@@ -3623,6 +3636,7 @@ async function autoBalance(only,pre){
   if(busy||recording)return;busy=true;ui();msg(LL('分析音量中…','Analysing volume…'));
   try{
     const L={};for(const i of ids){delete cells[i].lvl;L[i]=await levelOf(i)}
+    const vb=ids.map(i=>cells[i].vol);
     const cv=v=>Math.round(Math.max(.25,Math.min(2,v))*20)/20,
       med=a=>{a=a.filter(x=>x>0).sort((x,y)=>x-y);return a.length?a[a.length>>1]:0},
       one=typeof only==='number'&&cells[only];let t;
@@ -3634,6 +3648,7 @@ async function autoBalance(only,pre){
       if(t>0)ids.forEach(i=>{if(L[i]>0)cells[i].vol=cv(t/L[i])});
     }
     busy=false;ui();renderTracks();applyMix();
+    if(!one)balReport(ids,vb);
     msg((typeof pre==='string'&&pre?pre+' ':'')+(one?LL('已平衡第 '+(only+1)+' 格音量，其他格沒有改動。','Balanced cell '+(only+1)+' volume. Other cells untouched.'):LL('已平衡各格音量（太大聲的調低、太小聲的提高），可再手動微調。','Volumes balanced (loud cells turned down, quiet ones up). You can fine-tune manually.')));
   }catch(e){busy=false;ui();msg(LL('這個瀏覽器無法分析音訊，請手動調整音量。','This browser cannot analyse the audio. Please adjust the volume manually.'))}
   busy=false;ui();
@@ -4304,9 +4319,9 @@ function xInit(){
       lb.appendChild(mk('button',xl.value===v?'on':'','<b>'+lab+'</b><small>'+sm+'</small>',()=>{xl.value=v;fire(xl);upd()}))});
     {const ln=$('#xlNote');if(ln)ln.textContent=xl.value==='none'?LL('不改音量，維持你在混音頁聽到的大小；只有在會爆音時才自動調低。適合要交給製作人做後期，或自己再處理。','Keeps the level you hear in Mix. It is only turned down if it would clip. Good if a producer will master it, or you will process it yourself.')
       :xl.value==='peak'?LL('把最大聲的一下提高到 −1 dB（不會爆音），其餘按比例放大，最多提高 12 dB。想要最大音量時用。','Brings the loudest moment up to −1 dB (no clipping) and scales everything else with it, by at most 12 dB. Use it when you want it as loud as possible.')
-      :LL('把整體音量調到 YouTube、Spotify 等串流平台慣用的水平（約 −14 LUFS）。平台會自動調低太大聲的作品，所以再大聲也沒有好處。只是整體放大或縮小，不會壓平強弱。','Sets the overall level to what streaming platforms such as YouTube and Spotify use (about −14 LUFS). They turn louder uploads down, so louder gains nothing. It only scales the whole mix up or down and does not flatten the dynamics.')}
+      :LL('把整體音量調到 YouTube、Spotify 等串流平台慣用的水平。平台會自動調低太大聲的作品，所以再大聲也沒有好處。只是整體放大或縮小，不會壓平強弱。','Sets the overall level to what streaming platforms such as YouTube and Spotify use. They turn louder uploads down, so louder gains nothing. It only scales the whole mix up or down and does not flatten the dynamics.')}
     /* 提示 */
-    $('#xhint').textContent=(vid&&q==='fhd'?LL('1080p 即時匯出較吃力，舊手機可能掉幀；如影片有停頓，請改用「高畫質」。','1080p is heavy to render in real time and older phones may drop frames; if the video stutters, use High instead.')+' ':'')+FT[f]+LL('：',': ')+FS()[f]+LL('。','. ')+(f==='wav'?LL('在背景計算，通常數秒內完成。注意：錄音在瀏覽器內已壓縮（約 256 kbps），WAV 只是避免匯出時再壓縮一次，不會提升原有音質。','Rendered in the background, usually within seconds. Note: recordings are already compressed in the browser (about 256 kbps); WAV only avoids a second compression on export and does not improve the original quality.')
+    $('#xhint').textContent=(vid&&q==='fhd'?LL('1080p 即時匯出較吃力，舊手機可能掉幀；如影片有停頓，請改用「高畫質」。','1080p is heavy to render in real time and older phones may drop frames; if the video stutters, use High instead.')+' ':'')+FT[f]+LL('：',': ')+FS()[f]+LL('。','. ')+(f==='wav'?LL('在背景計算，通常數秒內完成。注意：錄音在瀏覽器內已壓縮過，WAV 只是避免匯出時再壓縮一次，不會提升原有音質。','Rendered in the background, usually within seconds. Note: recordings are already compressed in the browser; WAV only avoids a second compression on export and does not improve the original quality.')
       :''
       +(/^(webm|weba)$/.test(f)?LL('　部分 iPhone 無法播放此格式。','  Some iPhones cannot play this format.'):'')+(vid?LL('　影片內的聲音會再壓縮一次；要最佳音質請另外匯出 WAV。','  The sound inside a video is compressed a second time; for the best audio quality also export WAV.'):'')+(vid?upScaleTxt(q):''));
     /* 主掣 */
@@ -4745,12 +4760,15 @@ function qiWarn(c){const q=c&&c.qi,v=[],a=[];if(!q)return [];
   const j=LL('；','; ');   /* one line for the picture and one for the sound, so the 3-line take bar never hides a sound problem */
   return [v.join(j),a.join(j)].filter(Boolean).map(t=>t.charAt(0).toUpperCase()+t.slice(1))}
 function takeQualitySync(c){const r=Math.abs(Number(c&&c.residual)||0);return r<=25?['ok',LL('✓ 對齊正常','✓ Alignment looks normal')]:['warn',LL('⚠ 建議聽一次，確認對齊','⚠ Listen once for alignment')]}
-function renderTakeQuality(i){const q=$('#takeQuality'),c=cells[i];if(!q||!c)return;q.innerHTML='';const v=stage.children[i]?.querySelector('video');const finish=d=>{const dur=isFinite(d)&&d>0?d:0;const rows=[];{const pk=(typeof c.pk==='number'&&isFinite(c.pk))?Math.round(c.pk):null,quiet=!c.clip&&pk!=null&&pk<=QUIET_DB;
-      rows.push(takeQualityLine(c.clip?'bad':quiet?'warn':'ok',c.clip?LL('⚠ 聲音有削波，建議重聽','⚠ Clipping detected; listen again'):quiet?(pk<=-60?LL('⚠ 幾乎沒收到聲音，請檢查麥克風後重錄','⚠ Almost no sound was picked up; check the microphone and redo'):LL('⚠ 收音偏小聲（最高 '+pk+' dB），建議近一點再重錄','⚠ Quiet take (peak '+pk+' dB). Move closer and redo')):LL('✓ 收音正常','✓ Recording level looks normal')));}rows.push(takeQualityLine(dur>=1?'ok':'warn',dur>=1?LL('✓ 錄音完整 · ','✓ Recording available · ')+fmtT(dur):LL('⚠ 錄音似乎太短','⚠ Recording may be too short')));const sy=takeQualitySync(c);rows.push(takeQualityLine(sy[0],sy[1]));
+function renderTakeQuality(i){const q=$('#takeQuality'),c=cells[i];if(!q||!c)return;q.innerHTML='';const v=stage.children[i]?.querySelector('video');const finish=(d,dec)=>{if(cells[i]!==c)return;const dur=(dec!=null&&isFinite(dec))?dec:(isFinite(d)&&d>0?d:null),exp=(typeof c.recSec==='number'&&c.recSec>0)?c.recSec:null,miss=(dur!=null&&exp!=null&&dur<exp*.9&&exp-dur>=1);const rows=[];   /* R7.31: dur = what the browser can really decode (WebM reports Infinity, which used to read as 0 s); null = cannot tell, then no judgement. miss = F-16: clearly less sound than the recorder ran */{const pk=(typeof c.pk==='number'&&isFinite(c.pk))?Math.round(c.pk):null,quiet=!c.clip&&pk!=null&&pk<=QUIET_DB;
+      rows.push(takeQualityLine(c.clip?'bad':quiet?'warn':'ok',c.clip?LL('⚠ 聲音有削波，建議重聽','⚠ Clipping detected; listen again'):quiet?(pk<=-60?LL('⚠ 幾乎沒收到聲音，請檢查麥克風後重錄','⚠ Almost no sound was picked up; check the microphone and redo'):LL('⚠ 收音偏小聲（最高 '+pk+' dB），建議近一點再重錄','⚠ Quiet take (peak '+pk+' dB). Move closer and redo')):LL('✓ 收音正常','✓ Recording level looks normal')));}if(dur!=null){if(miss)rows.push(takeQualityLine('warn',LL('⚠ 只有約 '+Math.round(dur)+' 秒有聲音（錄了約 '+Math.round(exp)+' 秒），錄音可能不完整，建議重錄','⚠ Only about '+Math.round(dur)+' s of sound was captured out of about '+Math.round(exp)+' s recorded, so the take may be incomplete. Redo it')));else rows.push(takeQualityLine(dur>=1?'ok':'warn',dur>=1?LL('✓ 錄音完整 · ','✓ Recording available · ')+fmtT(dur):LL('⚠ 錄音似乎太短','⚠ Recording may be too short')))}const sy=takeQualitySync(c);rows.push(takeQualityLine(sy[0],sy[1]));
       {const ld=c.sync&&c.sync.lead;if(typeof ld==='number'&&ld<LATE_MS){const ms=ld<=-300?'300+':String(-ld);rows.push(takeQualityLine('bad',LL('⚠ 錄音機比第一拍晚了約 '+ms+' ms 才開始，開頭可能被切掉，建議重錄','⚠ The recorder started about '+ms+' ms after beat 1, so the start of the take may be cut off. Redo it')))}}
-      qiWarn(c).forEach(t=>rows.push(takeQualityLine('warn','⚠ '+t)));   /* R7.21 */rows.push(takeQualityLine('ok',LL('✓ 由你決定保留或重錄','✓ You decide whether to keep or redo')));q.innerHTML=rows.join('')};if(v&&isFinite(v.duration)&&v.duration>0)finish(v.duration);else if(v){const once=()=>{v.removeEventListener('loadedmetadata',once);finish(v.duration)};v.addEventListener('loadedmetadata',once);setTimeout(()=>finish(v.duration||0),1200)}else finish(0)}
+      qiWarn(c).forEach(t=>rows.push(takeQualityLine('warn','⚠ '+t)));   /* R7.21 */rows.push(takeQualityLine('ok',LL('✓ 由你決定保留或重錄','✓ You decide whether to keep or redo')));{const pk3=(typeof c.pk==='number'&&isFinite(c.pk))?Math.round(c.pk):null,ld3=c.sync&&c.sync.lead,
+    redo=!!c.clip||(pk3!=null&&pk3<=QUIET_DB)||miss||(dur!=null&&dur<1)||(typeof ld3==='number'&&ld3<LATE_MS);   /* R7.32: only problems a redo can fix; camera frame rate and the alignment advice do not count */
+    const bt=$('#takebar');if(bt&&+bt.dataset.i===i){bt.classList.toggle('redoFirst',redo);if(redo){clearTimeout(takeT);takeT=setTimeout(hideTake,20000)}}}
+  q.innerHTML=rows.join('')};bufOf(i).then(bf=>finish(v?v.duration:0,bf?bf.duration:null),()=>finish(v?v.duration:0,null))}
 function hideTake(){clearTimeout(takeT);$('#takebar').hidden=true}
-function showTake(i){$('#tbt').textContent=cellN(i+1)+LL(' 錄好了',' recorded');const b=$('#takebar');b.dataset.i=i;b.hidden=false;renderTakeQuality(i);renderReferencePanel();clearTimeout(takeT);takeT=setTimeout(hideTake,(cells[i]&&cells[i].clip)?20000:10000)}
+function showTake(i){$('#tbt').textContent=cellN(i+1)+LL(' 錄好了',' recorded');const b=$('#takebar');b.dataset.i=i;b.hidden=false;b.classList.remove('redoFirst');renderTakeQuality(i);renderReferencePanel();clearTimeout(takeT);takeT=setTimeout(hideTake,(cells[i]&&cells[i].clip)?20000:10000)}
 $('#tbk').onclick=hideTake;
 $('#tbr').onclick=()=>{const i=+$('#takebar').dataset.i;if(recording||busy){msg(LL('處理中，請稍後再重錄。','Busy - try again in a moment.'));return}hideTake();cur=i;render();return startRec(i)};
 /* gbtn removed */
@@ -5557,5 +5575,12 @@ body[data-tab=rec] #meter[data-lv=clip][data-level^="曾"]::before,body[data-tab
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
   setTimeout(place,300)})();
 </script>
+<style id="hitomi-r7-32">
+/* R7.32 (CSS only). A take worth redoing: Redo is the gold main button, OK the quiet one (positions unchanged, so a thumb that learned "OK is on the left" is not surprised). */
+html body #takebar.redoFirst #tbr{background:linear-gradient(135deg,var(--ac),var(--ac2))!important;color:var(--acfg)!important;border-color:transparent!important}
+html body #takebar.redoFirst #tbk{background:var(--bg)!important;color:var(--fg)!important;border:1px solid var(--bd)!important}
+/* the play-position slider was 16 px high; every other control on that bar is 36 px */
+html body #tps{min-height:36px;margin-top:0;margin-bottom:0}   /* the browser gives a range input 2 px margin above and below: without zeroing it the bar grew from 42 to 46 px and the preview budget (which counts 42) would be squeezed */
+</style>
 </body>
 </html>
