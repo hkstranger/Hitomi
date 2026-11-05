@@ -1,22 +1,168 @@
 <!doctype html>
 <!--
-  瞳 Hitomi  Version 1.0 (release)
-  Single-file recorder: Setup > Record > Mix > Export. No server, no install: open this file in a current browser (Chrome, Safari, Edge).
-
-  What it does
-    - Record up to 36 cells (video or audio only) to one shared click; earlier cells play in your headphones while you record the next.
-    - Sync: the delay of the device is compensated for every take; each take is placed on the click; Auto-align checks the rest (a recorded take moves by at most 60 ms; imported files are not limited).
-    - Mix: balance volume, reverb, per-cell volume / pan / EQ / low cut / timing / trim / picture framing and colour.
-    - Export: video (MP4, WebM) or audio (WAV 24/16-bit, M4A, WebM); loudness 'for posting' / 'keep level' / 'max level'.
-    - Projects are saved in the browser (IndexedDB) and can be backed up as .egrid files; a crash during a take can be recovered.
-
-  Known limits (also in the Quick Guide)
-    - Tested with generated sound and a desktop Chromium; real phones, Bluetooth headsets, real instruments and Safari/Firefox were not measured.
-    - Several video cells on a slow device can make the recorder start late or miss sound; the app warns after every take.
-    - Imported files have no click to follow, so their automatic alignment is less reliable.
-
-  The working history of this build is kept in the separate file 'Hitomi_1.0_開發紀錄.txt'.
+  瞳 Hitomi  Version 1.0  (single-file recorder: Setup > Record > Mix > Export)
+  VERSION 1.0 -- first numbered release. This file is the build that was developed as 'v3.0 R7.25' (the old v3.0 / R-numbers were an internal working series and are not version numbers).
+  From here on the app is numbered 1.0, 1.1 ... Every entry below that starts with 'R' is the history of that working series, kept so each decision can still be traced.
+  Build 3 (internal ids R7.27, R7.28, R7.29, R7.30, R7.31, R7.32, R7.33, R7.34). Version 1.0 stays 1.0; this build changes how the app lines cells up, the phone preview size and the wording of Setup > More settings:
+  (1) Auto-align uses a spectral onset feature (short FFT, 34 narrow bands, rising levels only) instead of loudness only. In a synthetic test with legato parts (30 ms pitch glide, with and without a loudness dip, down to 5 dB noise) the old feature accepted 0-1 of 8 and, with the +-150 ms window, placed 3 of 4 accepted cells wrong; the new one accepted 8 of 8 with a median error of 2 ms. Staccato material is unchanged (8 of 8, ~1 ms). Truly unrelated rhythms are still refused (0 of 16); two different parts with the same rhythm on the same click grid can still be accepted (4 of 8 in the test, 1 of them wrong), as they could with the old feature. The acceptance limit moved from 0.30 to 0.35 (same rhythm 0.40-0.81, unrelated 0.08-0.32 in 60 synthetic pairs).
+  (2) Two takes that were both recorded to the click get a gentle preference for staying close to where they are.
+  (3) Setup > Headphone sync: the two sliders (5 ms steps) now have a number box (1 ms steps, -300 to +300).
+  (4) Mix > Timing: -1 / +1 ms buttons next to -5 / +5 / -20 / +20.
+  (5) Record and Mix show the preview at the same size and position, and on phones held upright the preview is bigger (see the hitomi-r7-27 style block and script). On those phones the Import button moves into the top toolbar (it would otherwise sit under the red button) and the (i) import tips are not shown.
+  (6) Setup > More settings: clearer wording. The microphone list says the choice is not saved and that some Android phones (Samsung with a USB-C headset) force the headset microphone while iPad Safari follows the choice; the two different 'Auto' options of the video file size are named; the draft-saving note sits beside its checkbox; headphone sync describes the whole procedure; the two manual sliders say what they move; the keyboard shortcuts (Space, P) are listed.
+  Real recordings have not been measured; the numbers above are from generated test sounds.
+  R7.28 (finding F-01): Auto-align could accept a wrong position when the true offset lay outside the search window and the music sat on a regular rhythmic grid (it then landed about one grid step, ~900 ms, away). The correlation is now also computed out to +-2.5 s; a match inside the window is refused when a stronger match exists just outside it (ratio 1.05; 1.15 still let 3 of 28 through, 1.0 and below refused more real matches). A refused result keeps the cell where the click placed it ('adjust by hand' note), exactly as for any other unclear case. On generated sound wrong accepts fell from 63 to 4 of 280 (none on grid-locked music; the 4 are irregular, human-like timing). A first attempt (agreement of the first and second half of the take) was measured and not used: a regular rhythm gives the same wrong shift in both halves.
+  R7.28 also (finding F-02): the analysis of a long take handed control back to the page too rarely. On a 4x slower CPU (a phone stand-in) a 3-minute take froze the page for up to 0.57 s in the correlation, 0.45 s in the spectral analysis and 0.3 s in the original loudness feature novelty(). The correlation and every loop of the analysis now give the page a turn every ~20 ms (same computation, same results: 92 of 92 test pairs identical, novelty() byte-identical); the extra strips outside the search window are only computed for a result that would otherwise be accepted. Also: on phones, after a change of picture ratio the Import row could briefly reappear under the red Record button (412x915); fixed.
+  R7.29 (findings F-03, F-04): crash recovery no longer offers an empty draft (under 20 KB or under 1 s), shows the length in seconds, and puts a recovered take into an empty cell instead of replacing a recording that is already in the cell (it only replaces when no cell is free, and then says so). When the microphone the player chose is no longer there (unplugged USB-C headset, dropped Bluetooth) the app falls back to the system default and says so; the messages now name the real cause (no microphone found / microphone busy / permission) instead of always 'allow permission and use HTTPS'.
+  R7.30: the Record tab on phones held upright has its play bar back (R7.27 hid it to make the preview bigger, which took away the way to listen to the takes from the page where you record them). The preview budget on Record and Mix is now 100dvh minus 306 px instead of 260 px, so the preview is 46 px shorter than in R7.27 (360x640, 9:16: 334 px high instead of 380; the original v1.0 had 304 px). The budget is the same with or without a recording, so the preview never jumps when you start or finish a take.
+  R7.31 (found by a musician-side usage test): (1) the take bar said 'Recording may be too short' on good takes made in WebM (audio-only and 'WebM VP8' recordings): the browser reports the length of a WebM file as Infinity and the app read that as 0 seconds. The length is now the decoded length of the sound; if it cannot be decoded nothing is claimed. (2) The red 'this browser does not save drafts in MP4' box appeared about 4 seconds INTO a take, when the player cannot read or act on it; it now appears after the take, once per page load, in plainer words. (3) Mix > Balance volume gave no visible answer (the status line is hidden on Mix); one line under the buttons now says which cells were raised or lowered, or that they were already equal; it disappears as soon as a volume is changed. (4) F-16: a take can contain clearly less sound than the recorder ran (measured on a one-core test machine with software video encoding: 63-68% on takes made while earlier cells were playing); the take bar now says so when the decoded sound is under 90% of the recorder time and at least 1 s short. (5) F-15 (also in v1.0): when the storage guard stopped a take, the sentence explaining why was replaced a moment later by the camera frame-rate note; it is no longer replaced.
+  R7.32 (leftovers of the musician-side test): (1) a take that is worth redoing (clipped, too quiet, clearly missing sound, under 1 s, recorder started late) now makes Redo the gold main button and OK the grey one, and the take bar stays 20 s; warnings a redo cannot fix (camera frame rate, alignment advice) do not change the buttons. (2) The play-position slider on Record and Mix is 36 px high (was 16); its default 2 px margin is removed so the play bar keeps its 42 px. (3) Export: the loudness and WAV notes no longer quote LUFS or kbps; the numbers remain on the finished-export card.
+  R7.33 (found by a virtual-orchestra run: 27 synthetic instruments recorded through the real buttons, positions checked against the exact signal that was fed in): (1) F-18, present since v1.0: the beat-grid fine adjustment that runs after every take moved a late player even LATER (a residual moves a take later and the code added the measured lateness to it); it was also applied only to the takes where the measurement worked. Now a new take is lined up with the takes recorded earlier in the same session (median of where their notes now sit, at most 60 ms, the first take is the reference), and a take loaded from a saved project is never measured again (reloading the page used to add the adjustment a second time). Spread between the 27 instruments: 43 ms before, see the test report for the result after. (2) F-19: the automatic alignment after a take no longer moves a take recorded to the click by more than 60 ms (it had moved an off-beat part by 187 ms and another by 84 ms); it also stored the new position without taking the grid adjustment out, so such a take ended up off by that adjustment (same in the import alignment). The hint 'listen once for alignment' now appears only when the adjustment reached the 60 ms limit (it used to appear above 25 ms). (3) F-20: Balance volume can lower a cell down to x0.05 (was x0.25), lowers everything together when the quietest cell would need more than +6 dB, and the line under the button names the cells that are at the lowest setting and by how much everything was lowered.
+  R7.35: the live camera preview froze for the whole take when a cell that already had a recording was recorded again (Redo, re-record): vids() picked up the live preview <video> because the old take was still in the cell until Stop, and stopAll() paused it. vids() now skips the live preview, and the live preview restarts itself if anything pauses it.
+  R7.34 (finding F-25, from the virtual-orchestra run): the Auto-align button on Mix (all cells) had no limit on the move and moved a sparse, off-beat part (a triangle) by 263 ms; the after-take alignment had been limited to 60 ms in R7.33 but this branch was missed. A take recorded to the click now moves by at most 60 ms here too; if the match wants more, the take stays where the click put it, and the message and the card row say by how much the match wanted to move it ('placed by the metronome, not moved'). Imported files are not limited.
+  Build 2 (internal id R7.26). Version 1.0 stays 1.0; this build adds, on top of the first Version 1.0 build (R7.25):
+  (1) Setup page: 'Version 1.0' at the bottom.
+  (2) Export > Quality: 'Small' and 'Standard' are always the same pixel size and differ only in bit rate, which a player cannot read; the chips now say 'Smallest file' / 'More detail' and a line says how much
+      smaller the file is and that a little detail is lost. The Mbps figure stays in the tooltip.
+  (3) Hints that existed only as hover tooltips (invisible on a phone) are now on screen: what each aspect ratio is for (Setup > Layout heading), what Low cut is and what its button steps through (Mix > Sound),
+      a visible 'Reset volume & pan' button (Mix > Sound; the double-click reset only works with a mouse, a double tap on a phone does not reset), and how to clear the red clip light on the Record level bar (it used to keep saying 'Will clip, step back' after the player had moved back).
+  (4) Phone landscape: Setup, Mix and Export were drawn 54 px too far left, under the tab strip on the left edge (only Record left room for it); they now start to its right.
+  No recording, sync, mix or export logic changed.
+  R4.x clean-up series, from R3.5: dead code, Looper, tuner, producer lock and unused UI removed;
+  English strings completed; record-time readout restored; light-theme contrast fixed;
+  trailing patch blocks moved inside <body>; 254 CSS declarations that a later rule on the same selector always overrides removed
+  (statically provable only: same selector, same media context, later or !important wins; fallbacks for newer CSS kept);
+  R7.25: wording and labels from a simulated first run by a musician (nothing in the recording, sync, mix or export logic changed). (1) The Record page now says 'wear headphones'
+        (nothing did; without them the click and the earlier cells leak into the mic) and Setup says to set the song's tempo first. (2) A tick on a cell name now means RECORDED (it marked
+        the selected, still empty, cell). (3) A take that 'could not be aligned' is one the metronome already placed: it now says so ('placed by the metronome, drag the waveform if it
+        sounds off') instead of a warning; only an imported file keeps the 'adjust by hand' warning. (4) After a take the message no longer mentions 'Sync Engine v2' or the camera size.
+        (5) 'Keep' became 'OK' (it only closes the strip; the take is saved when Stop is pressed). (6) Clearer labels: 'Wait before start' (was 行開時間), count-in shows 'Starting in 3 s',
+        'Which cells to hear', Mix tab 'Timing' with 'minus = earlier, plus = later', 'Enters at', drift chips read '0:00 late by 60 ms', 'M = mute, S = solo'. (7) Long-press to rename is now
+        written in the message when a cell is selected (it was a hover tooltip only). (8) Export: the 'plays through once in real time' warning sits under the button; the finished
+        card shows one 'Done' with the volume in words; 合成 and 匯出 both meant export, now 匯出. (9) About 50 sentences that mixed Cantonese words into written Chinese (唔, 嘅, 喺, 撳, 冇,
+        啲, 咗, 嗰, 係用...) are written Chinese; 對位 became 對齊; 'Take' and 層 became 錄音 and 格.
+  R7.24: (1) Setup > Headphone sync: one visible button. Automatic measure (Start calibration, beeps through the mic), the manual sync adjustment and Sync test moved into a folded
+        'Advanced' block; kept because measured with a known delay in the loop: the clap check only reaches about +-250 ms (at 300 ms it hears 0 claps, at 450 ms the 600 ms beat period
+        makes it read the wrong beat) while Start calibration measures up to 400 ms. (2) The clap check no longer says 'close enough' when it is still more than 40 ms off (450 and 600 ms
+        delays ended with 0 ms compensation and that message); it says so and points to Automatic measure, and the 'not enough claps' message does the same. (3) Analysis frames used a
+        nominal 5 ms but are 5.011 ms at 44.1 kHz: beat-grid correction after a take failed on 44.1 kHz devices and the clap check read about 10 ms low; fixed (48 kHz was fine).
+        (4) Auto-align accepted unrelated rhythms (89 of 90 passed the 0.08 correlation limit; related material scored 0.48-1.0, unrelated 0.075-0.31); the limit is now 0.30.
+        (5) Short phones: the highlighted status box no longer runs under the red button. (6) Crash drafts: with MP4 the recorder sent nothing before Stop in the Chromium tested, so the 'save a draft every second' setting saved nothing; the app now says so 3.5 s into a take if no draft data has arrived. (7) Video export: if the recorder could not start the page stayed locked on 'exporting' with a Cancel that did nothing; it now stops with a message and points to WAV/M4A. (8) Removed dead code left by R7.23 and two stale English texts; the reference-list label follows a language change; the English export hint no longer uses a full-width colon and English sentences no longer contain ideographic spaces.
+  R7.23: the Setup page's 'Ready check' card is removed (a card at the top that said 'Ready to record', plus two buttons). Measured: the card only checked that the browser can record
+        and that 50 MB are free (always true on a phone); its Level test called a -0.5 dB peak 'OK' where the Record page warns it will clip (same sound, two answers); and it polled the storage
+        and the audio devices every 2 s while the Setup page was open. Nothing useful was lost: 'this browser cannot record' and 'storage low' are warnings at the top of the page that appear only
+        when true, Bluetooth is still warned about when recording starts, and the headphone sync check moved to Setup > More settings > Latency calibration. The Setup page now starts with Project.
+  R7.22: found by a hang hunt (white-box scan of every loop, observer and wait, plus black-box fault injection and random-action fuzzing). Eight ways to lock the whole page until a reload are
+        closed. (1) Count-in: an audio engine that never starts (a phone that paused sound) made Cancel do nothing; now it waits 2.5 s, then cancels with a message. (2) Record, headphone sync check, calibration and level check: a camera or microphone
+        request that never answers (permission prompt ignored) locked every control (the tab bar too, or Record for good after the level check); now 20 s at most. (3) Record: if the recorder refuses to start (camera taken by another
+        app) the take stayed 'recording' for ever; if it never reports 'stop' Stop did nothing; both now end the take (4 s limit) with a message, saving what was recorded when there is data.
+        (4) Video export: an audio engine that never starts left the page locked with no Cancel button; now 3 s, then a message (WAV still works). (5) Headphone sync check and calibration:
+        every wait now has a wall-clock limit. (6) A browser without MediaRecorder or AudioContext locked on the first Record press; it now says so. (6b) Stop pressed in the 1-3 s between pressing Record and the count-in
+        starting did nothing (the button already said Stop); it now cancels the take. (7) The 'checking the video' note can no
+        longer stay for ever (25 s limit).
+  R7.21: audio and picture quality checks. (1) Export: when the device cannot keep up, the scaling quality used to drop to 'low' (6-9 dB worse, shimmering text and lines when measured);
+        it now stops at 'medium', which measured the same as 'high'. (2) Record: after every take the app reads what the camera and microphone REALLY delivered and warns when the camera
+        gave less than asked (e.g. 640x480 for 720p) or runs below 24 fps, when the browser kept auto-gain / noise suppression / echo cancellation on, or when the mic samples below 44.1 kHz
+        (typical of a Bluetooth mic); the status line shows the camera size and fps. (3) Export: the card ends with the picture size and bit rate, the file is checked for the promised size,
+        the Export page says that the sound inside a video is compressed a second time (WAV is the best-quality audio), and warns when the chosen quality enlarges the camera picture (no extra
+        detail). (4) The default export quality is High (9:16 Standard was only 540 px wide); a device that once could not keep up starts at Standard instead, and one that lags during an export is switched to Standard at once.
+        (5) Bug fix: the take bar froze the whole page when a take showed 3 or more warnings at once (clipping + alignment drift + a very short take); it now stops and shows at most 3.
+  R7.20: findings from a simulated 4-part trombone session. (1) After a video export the file length is compared with the mix length; more than 5% (and at least 1 s) longer shows a warning
+        (the picture runs behind the sound on a device that cannot keep up: 4 cells at 1080p, 6.6 s late at the 18 s mark, while the old check said 'video checked'). (2) If the recorder
+        starts after beat 1 (device busy) the take bar and status line say the start may be cut off. (3) The loudness line no longer says 'level unchanged' together with 'boosted as far as
+        allowed'. (4) The CLIP badge no longer covers the cell name.
+  R7.19: Export > loudness in plain words. The old choices 'Streaming' and 'Peak' meant little to a player, and there was no way to leave the volume alone. Now three chips: 'For posting'
+        (the old Streaming: about -14 LUFS), 'Keep level' (NEW: the mix is exported at the level you heard in Mix; it is only turned down when it would clip) and 'Max level' (the old
+        Peak: loudest peak to -1 dBTP). Each has a one-sentence explanation, the default is unchanged, saved projects keep working, and after an export the card says in words
+        what happened ('raised by 6.2 dB' / 'level unchanged') before the LUFS and true-peak numbers. 'For posting' and 'Max level' produce exactly the same audio as before.
+  R7.18: contrast leftovers, CSS only. The white tick on the green circle in the Mix alignment summary was 2.3:1 and is now 5.0:1; the small solid-red labels with white text (over-limit
+        banner, 'Recording' cell tag, drift chips, 'Delete?' confirm, CLIP badge and CLIP chip) were 4.15:1 and are now 5.4:1, using the same deeper red as the record button.
+  R7.17: three fixes from the full test pass, CSS only. (1) the red Record button was hidden under the tab bar on short phones and small tablets (fully hidden on 375x667, 29 px on
+        360x640, 33 px on 768x1024); it is now pinned above the tab bar on those sizes, same place as during recording. (2) contrast: light-theme gold buttons use dark ink (was white,
+        3.4 to 2.3:1, now 5.4 to 8.2:1); the red record button gradient is deepened so white text is >= 4.5:1 everywhere (was 4.2 to 2.6:1). (3) phone landscape: no more sideways
+        scrolling on the Record page (hidden time placeholder + 260 px button) and on the Setup page of the smallest phones.
+  R7.16: progress and Cancel for the long audio render. WAV export: the bar was parked at 30% then jumped to 90% (9 cells x 3 min with reverb takes about 18 s on a desktop and
+        longer on a phone, so it looked frozen) and there was no Cancel. Now it shows a real percentage and time left from the render itself, then 'Finishing loudness' and 'Writing the
+        file', and Cancel works at any point. The video export has the same silent wait before it starts playing the mix ('Preparing export...' at 0%); it now shows the percentage
+        and has Cancel too. The rendered audio is unchanged. Browsers without OfflineAudioContext.suspend() render in one go without a percentage.
+  R7.15: (1) bug fix: swapping two cells ('Move to...' on a Mix track) moved the recording but left the cell NAME behind, so a name such as 'Alto' ended up on the wrong voice on
+        Record, in the track list and on the exported video; the 'use as reference' tick and the open Edit panel also stayed behind. They all move with the recording now.
+        (2) while recording, the readout (time, bar number, beat dots) was rewritten about 200 times a second by two overlapping updaters; each piece is now written only when
+        its value changes (time 1x/s, bar 1x per bar, dots 1x per beat) and the 30 ms timer became a 250 ms fallback for background tabs. Looks and behaviour are identical.
+  R7.14: export performance. (1) the video export no longer decodes every cell's audio a second time: it reuses the buffer Mix/Record already decoded (before, 9 cells x 3 min
+        held roughly twice the audio in memory during a video export, about 1.1 GB instead of 0.55 GB; a phone browser may close the tab at that size). (2) the export canvas starts at
+        high-quality scaling (R7.5) and steps down to medium, then low, when painting is too slow (average paint time > 26 ms), and says so on the export card.
+        Nothing else changed; WAV/M4A export, sync, mix and recording are untouched.
+  R7.13: Recording status layout (count-in and recording). Bug fixed: on a phone the red Stop button could sit underneath the tab bar (9:16 on any phone, and 1:1 on small
+        ones) because the in-flow height budget was wrong; in portrait it is now pinned above the tab bar and the preview height is recomputed from what is really left.
+        While recording the reference list, the plain status sentence and the useless Level-check button are hidden (warnings/errors still show); the readout (time, bar, beat dots)
+        is about 60% bigger (and the cell tag no longer repeats the time, which was cut off in narrow cells); during the count-in its slot says 'Get ready' instead of being an empty gap. Landscape is unchanged apart from the hidden rows. CSS only.
+  R7.12: phone-first clean-up. Setup: the Ready-check buttons are one compact row (result line only after a test); Ready-check labels shortened ('Level test', 'Headphone sync') so they are not cut; the four tempo wheels line up (labels shortened: 'Get ready',
+        'Count-in'); the confusingly named 'Sync check' toggle is now 'Align after recording' (the Mix button stays 'Auto-align'). Mix: the Reverb card folds on phones with the current
+        choice in its header (the tracks now start higher up), 'Chamber' is 'Room' (it was cut to 'Cha...'), the auto-tools header reads 'Quick fixes' and the two tool buttons are one short row.
+        Record: the second red 'too loud' banner is gone (the level meter already says it). No recording, sync, mix or export logic changed.
+  R7.11: layout fixes found in a rendered review. (1) Record take bar: was overflowing on phones (the two play buttons were cut off at the right edge, the quiet-take note wrapped
+        into 6 lines); now a compact grid: title + Keep + Redo, then Last 10 s + Full take, then the quality note; labels shortened. (2) Desktop Record: preview height leaves
+        room for the floating tab bar (the status line sat under it). (3) Export > Quality: when two options have the same pixel size (1:1 at High and 1080p, or Small and
+        Standard) the 1080p chip is hidden if it duplicates High, and look-alike chips show their bitrate. Layout/labels only; no recording, sync, mix or export logic changed.
+  R7.10: honest WAV wording. The WAV bit-depth chip said 'Pro delivery' / the hint implied lossless quality, but takes are compressed (Opus/AAC ~256 kbps) by the browser's
+        MediaRecorder before they are mixed. Chip and format label now say 'No re-compression' / 'Uncompressed' and the Export hint says WAV only avoids a second compression. No audio processing changed.
+  R7.9: slow-export warning. During a video export the number of frames actually painted is counted; when the average is below 24 fps (target about 30, at least 2 s of
+        frames, page not hidden) the export card says so and suggests the next lower quality (1080p -> High -> Standard -> fewer cells). Nothing is changed automatically.
+  R7.8: 1080p export. New 'Quality' choice on Export: 1080p = short side 1080 px (1:1 1080x1080, 4:5 1080x1350, 9:16 1080x1920, 16:9 1920x1080) at 12 Mbps.
+        Existing choices keep their size and bitrate. One shared expDims()/EXP_BR now drives the export canvas, the bitrate, the size labels and the size estimate.
+        A note on the Export page warns that 1080p is heavy to render in real time.
+  R7.7: quiet-take warning. Every recording now stores its peak level (before, only clipping was stored, so the take bar said 'Recording level looks normal' for any take
+        that did not clip, even one peaking at -45 dB). A take whose peak is -24 dB or lower now shows an amber warning with the figure; below -60 dB it says almost no sound
+        was picked up. Imported files and takes recorded before this version have no stored peak and are not judged. The peak is saved with the project and the .egrid file.
+  R7.6: colour controls on browsers without canvas ctx.filter (Safari/iPhone): Brightness and Contrast sliders removed with a one-line note, and 'Match others to this' only sets Temperature there.
+  R7.5: video quality: export canvas imageSmoothingQuality='high'; recording bitrate follows camera quality by default (480p 1.5 / 720p 4 / 1080p 8 Mbps).
+  R7.4: imported media is lined up automatically. After Import (one file, several files, or several mixed with .egrid) the imported video/audio cells are aligned to the
+        cells already in the project with the Auto-align method (+-1 s window, refuses when the rhythm is unclear, one 'Undo align' reverts it); .egrid cells keep their own
+        placement; the 'Sync check' switch in Setup turns it off. The Mix-tab Auto-align button is unchanged.
+  R7.3: cell names on the exported video. A cell you named (long-press its tag on Record) is drawn on its cell in the exported video as a dark pill with white text, like the
+        preview tag; the Export page gets a Show / Hide row (video exports, only when at least one cell has a name). Also: the R7.1 timeslice comment no longer states an
+        unverified WebKit claim as fact.
+  R7.2: export quality. WAV can be 24-bit (default; 16-bit with dither stays as an option); the export summary and the finished-export card show the real sample rate
+        and bit depth (the summary used to say 44.1 kHz regardless); the -1 dB loudness ceiling is now a TRUE peak (4x oversampled), not a sample peak, so inter-sample
+        overs no longer exceed -1 dBTP; the finished-export line shows the resulting true peak.
+  R7.1: video integrity. (1) every MP4 MediaRecorder is started with a 1 s timeslice (reported, unverified WebKit behaviour: un-sliced video/mp4 on iPhone/iPad/Safari can
+        stop writing video after ~13-16 s while audio continues; recording used a slice only when 'save a draft' was ticked, export never did); WebM stays un-sliced because a
+        slice removes its duration header. (2) after a video export and after a recording, the last ~1.8 s of the file is played muted and its frames counted; a frozen picture is reported.
+  R7.0: dead code from the removed Live-test UI deleted: liveTest() reduced to the single measurement 'Check headphone sync' uses (no hidden report, no per-cell
+        analysis, no history, no Apply-suggestion button/handler) and the two hidden nodes (#liveres, #liveapply) it used to write to.
+  R6.9: Setup clean-up: Ready-check Mic/Camera chips removed and Storage/Browser chips shown only on a problem; Foot-pedal section reduced to one line; Live-test UI
+        removed (its output nodes stay hidden because 'Check headphone sync' still writes to them); card step numbers removed.
+  R6.8: recording space guard: while recording, free storage is checked every 3 s; under 5 min left it warns, and when the finished take could no longer be saved
+        (or a draft write is refused with QuotaExceededError) it stops the take itself and keeps what was recorded instead of losing it on page close.
+  R6.7: Bluetooth awareness: device-label detection (Setup note + record-start warning recommend wired headphones), and 'Check headphone sync' appends how large
+        the compensated delay is when it exceeds 100 ms.
+  R6.6: the large-output-latency warning now names a button that exists (Setup > Check headphone sync) instead of 'Calibrate headset above'.
+  R6.5: calibration refuses a result outside the measurable 0-400 ms range (long delays used to alias to 'compensating 0 ms' and overwrite the old value).
+  R6.4: Setup latency calibration: 'Start calibration' and 'Auto measure (no clapping)' merged into one button (they ran identical code; only the
+        on-screen wording differed). Beeps through the mic is the main path, clapping along the fallback.
+  R6.3: Setup 'Test loudest passage' now captures with the same settings as recording (no auto-gain / noise suppression, chosen mic);
+        'Mirror preview only' is remembered across reloads.
+  R6.2: Setup > Layout card: step counter fills its column; ratio/layout rows share one 40px height; selected ring drawn inside the button;
+        border row compacted; thumbnail no longer wraps onto its own row on <=359px phones (step buttons 36px, unit word hidden there).
+  R6.1: Mix progress row (dots + 2/4 Done) hidden like on Record, so both previews start at the same height (-28px).
+  R6.0: cell name edit = long-press (500 ms) on the name tag; a tap on it now selects the cell like anywhere else.
+  R5.9: Mix 'Undo align' button 34->36px (the only control the #p-mix .mixAct rule governs).
+  R5.8: Setup tap targets raised to the same 36px floor as Record/Mix (quick cell-count 32->36, 8 buttons 34->36).
+  R5.7: desktop (>=900px) Mix preview height budget = Record's (100dvh - 240px), so the preview is the same size on both tabs.
+  R5.6: corner radii on Record/Mix follow one scale: 16 panels / 14 blocks / 12 controls / pill (the 9px active-tab radius is kept: it is concentric with its 12px track).
+  R5.5: desktop 'mobile preview' switch (#viewSwitch, a developer aid) removed.
+  R5.4: Record/Mix tap targets raised to a 36px floor (Level check 28px visual / 34px hit area).
+  R5.3: phone-portrait chrome unified (bottom nav 46px on all tabs; Record/Mix share the same header x and preview margin).
+  R5.1/R5.2: all debug tooling removed (#diagnostics instrumentation, ?debug FPS panel, regression-audit / error-log hooks, sync self-check,
+  diagnostics export, debug counters, and every console.* log).
+  R5.0 weight pass: logo re-encoded to its displayed size, web-font stylesheet no longer blocks first paint, roomy check no longer
+  re-triggers itself, cue back-up timer runs only while cues are queued, 12 unreachable CSS rules + 2 dead statements removed;
+  light-theme TEXT colours darkened to >= 4.5:1 via --rec-t / --ac-t / --ok-t / --warn-t (dark theme values unchanged).
+  Recording, sync, mix and export behaviour of grid projects is unchanged.
+  The "v2.0 Phase n" / "R2" / "R3" tags in comments and block ids below are feature-origin labels, not file versions.
 -->
+
 <html lang="zh-Hant">
 <head>
 <meta charset="utf-8">
@@ -24,7 +170,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>瞳 Hitomi</title>
 <link rel="icon" type="image/png" href="data:image/png;base64,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">
-<meta name="application-version" content="1.0">
 <meta name="theme-color" content="#b8801f">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1077,7 +1222,7 @@ body.aoMode #flip{visibility:hidden}
     </section>
     </div></details>
   <button id="toRec" class="cta"><span id="toRecT" data-i18n-key="action.startRecording">開始錄音</span><svg class="ic"><use href="#i-next"/></svg></button>
-  <p class="verNote" id="verNote">瞳 · 版本 1.0 正式版</p>
+  <p class="verNote" id="verNote">瞳 · 版本 1.0</p>
 </section>
 <section id="p-rec" class="tp">
   <div class="recTools" id="impRow">
@@ -1828,9 +1973,9 @@ let cellLabels=[];
 const cellN=n=>{const x=(cellLabels[n-1]||'').trim();return x||LL('第 '+n+' 格','Cell '+n)};
 const dn=n=>{const m=/^(?:專案|Project) (\d+)$/.exec(n);return m?LL('專案 ','Project ')+m[1]:n};
 const escHTML=v=>String(v??'').replace(/[&<>\"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[ch]));
-const tagTxt=(i,live)=>live?LL('錄音中','Recording'):(cells[i]?'✓ ':'')+(N>6?(i+1):cellN(i+1));   /* the tick used to mark the SELECTED cell (the first empty one), so a recorded cell had none and an empty cell had it; the gold outline already shows the selection */
+const tagTxt=(i,live)=>live?LL('錄音中','Recording'):(cells[i]?'✓ ':'')+(N>6?(i+1):cellN(i+1));   /* R7.25: the tick used to mark the SELECTED cell (the first empty one), so a recorded cell had none and an empty cell had it; the gold outline already shows the selection */
 const calIdle=()=>latMs?LL('已校準：補償 '+latMs+' ms。','Calibrated: compensating '+latMs+' ms.'):LL('未校準。','Not calibrated.');
-const MR_EN='Wear headphones. Pick a cell, then press the red button below to start recording.';   /* nothing in the app told a player to wear headphones; without them the click and the earlier cells leak into the mic */
+const MR_EN='Wear headphones. Pick a cell, then press the red button below to start recording.';   /* R7.25: nothing in the app told a player to wear headphones; without them the click and the earlier cells leak into the mic */
 const RATIOS={'1:1':[720,720],'4:5':[600,750],'9:16':[540,960],'16:9':[960,540]};
 /* 參考常見 DAW／錄音 App：Off → Booth → Room → Chamber → Hall → Church */
 const PRE={'無':0,'小室':.25,'錄音室':.45,'室內':.9,'大廳':1.8,'教堂':3.5};
@@ -1885,7 +2030,7 @@ let micId='',rv={p:'無',amt:.4},camFace='user',audioOnly=false,clickT=null,an=n
 const ic=n=>'<svg class="ic" aria-hidden="true"><use href="#i-'+n+'"/></svg>';
 const ratIc=r=>{const [a,b]=r.split(':').map(Number),k=12/Math.max(a,b),w=a*k,h=b*k;
   return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="'+(12-w/2)+'" y="'+(12-h/2)+'" width="'+w+'" height="'+h+'" rx="2.2"/></svg>'};
-const RAT_DESC=()=>({'1:1':LL('方形，適合 IG／FB 貼文','Square - feed posts'),'4:5':LL('直向貼文（IG／FB）','Portrait post (Instagram / Facebook)'),'9:16':LL('全螢幕直向：Reels／Shorts','Full-screen vertical: Reels / Shorts'),'16:9':LL('橫向：YouTube／電視','Landscape: YouTube / TV')});   /* these names were only in a hover tooltip */
+const RAT_DESC=()=>({'1:1':LL('方形，適合 IG／FB 貼文','Square - feed posts'),'4:5':LL('直向貼文（IG／FB）','Portrait post (Instagram / Facebook)'),'9:16':LL('全螢幕直向：Reels／Shorts','Full-screen vertical: Reels / Shorts'),'16:9':LL('橫向：YouTube／電視','Landscape: YouTube / TV')});   /* R1.0b: these names were only in a hover tooltip */
 const RAT_LAB=()=>({'1:1':['1:1',LL('方形','Square')],'4:5':['4:5',LL('貼文','Post')],'9:16':['9:16',LL('Reels','Reels')],'16:9':['16:9',LL('橫向','Landscape')]});
 /* 版型示意：一眼睇到格點排列 */
 const layIc=v=>{
@@ -1982,7 +2127,7 @@ function srcRect(vw,vh,bw,bh,c){const z=Math.max(1,(c&&c.zm)||1),k=Math.max(bw/v
   return[(vw-sw)/2*(1+px),(vh-sh)/2*(1+py),sw,sh]}
 function repaint(){stage.querySelectorAll('canvas.vc').forEach(cv=>cv._t=-1);paintKick()}
 function applyBorder(){const w=stage.clientWidth,px=(Math.round(w*bdW/100*10)/10)+'px';if(stage.style.gap!==px){stage.style.gap=px;stage.style.padding=px}stage.style.background=bdC}
-function applyMix(){{const e=document.getElementById('balRes');if(e)e.hidden=true}   /* the 'balanced' line is out of date as soon as any volume changes */
+function applyMix(){{const e=document.getElementById('balRes');if(e)e.hidden=true}   /* R7.31: the 'balanced' line is out of date as soon as any volume changes */
   playing.forEach(o=>{const c=cells[o.i];if(c){o.g.gain.value=mixGain(o.i);if(o.g._hp)o.g._hp.frequency.value=c.hp>0?c.hp:10;if(o.g._pn)o.g._pn.pan.value=c.pan||0;if(o.g._eq)o.g._eq.forEach((f,k)=>f.gain.value=(c.eq||[])[k]||0)}});save();refreshTotal()}
 const cvol=()=>{const el=$('#cvol');if(!el)return.8;const n=+el.value;return isFinite(n)?Math.max(0,Math.min(1,n)):.8};
 function clickSnd(c,t,f,len,dest){
@@ -2010,14 +2155,14 @@ const bpm=()=>Math.min(220,Math.max(40,+$('#bpm').value||100));
 
 /* ---------- project persistence ---------- */
 let restoreFailed=false,resumeOffer=false,lastSt=0;
-let failWhy='',recForce=null,prepPhase=false,cancelPre=false;   /* prepPhase: Record was pressed but the count-in has not begun (other cells are being decoded and refined, 1-3 s with many cells) */   /* why a take had to be abandoned (shown instead of the plain 'cancelled'), and the single way out for a take that cannot finish */
+let failWhy='',recForce=null,prepPhase=false,cancelPre=false;   /* prepPhase: Record was pressed but the count-in has not begun (other cells are being decoded and refined, 1-3 s with many cells) */   /* R7.22: why a take had to be abandoned (shown instead of the plain 'cancelled'), and the single way out for a take that cannot finish */
 let rt,ready=false,st,counting=false,cancelCount=false,alignPrev=null,retMix=false,meterRun=false;
 let alignRep=null,alignGhost={};
 let alCol=false;
 function clearAlignRep(){alignRep=null;alignGhost={};const b=$('#alignSum');if(b)b.hidden=true}
 /* 每格結果 → 白話說明（k＝狀態類別，chip＝標籤，txt＝一句說明） */
 function alInfo(r,k){
-  const rec=k!=null&&!!(cells[k]&&cells[k].sync);   /* a recorded take is already placed by the metronome; only an imported file has nothing to go on */
+  const rec=k!=null&&!!(cells[k]&&cells[k].sync);   /* R7.25: a recorded take is already placed by the metronome; only an imported file has nothing to go on */
   if(r.edited)return{k:'edit',chip:LL('✎ 已手動調整','✎ Edited'),txt:LL('你已經改過位置','You adjusted this one yourself')};
   if(r.st==='anchor')return{k:'anchor',chip:LL('基準','Reference'),txt:LL('其他格以這格為準，位置不變','The other cells were lined up to this one; it stays put')};
   if(r.st==='low'&&rec&&typeof r.big==='number'&&r.big)return{k:'low',soft:true,chip:LL('可微調','Fine-tune'),txt:LL('與其他格相差約 '+Math.abs(r.big)+' ms（'+(r.big<0?'偏慢':'偏快')+'），但它已按拍子機放好，所以沒有移動。聽起來不合拍才拖動波形','About '+Math.abs(r.big)+' ms '+(r.big<0?'later':'earlier')+' than the others, but it is placed by the metronome, so it was not moved. Drag its waveform only if it sounds out of time')};
@@ -2045,7 +2190,7 @@ function showAlignRep(){const b=$('#alignSum');if(!b)return;
   else if(n.moved&&n.low){ok=false;t=LL('已對齊 '+n.moved+' 格，'+n.low+' 格要手動調','Aligned '+n.moved+', '+n.low+' need manual adjustment');sub=LL('點選標示「要手動」的格，會跳到該音軌','Tap a row marked Manual to jump to its track')}
   else if(n.low){ok=false;t=LL('未能自動對齊','Could not align automatically');sub=LL('節奏不夠明顯（例如沒有鼓點或拍子不清楚）。請在波形上拖動手動調整','The rhythm is too faint (no clear beat). Drag the waveforms to adjust by hand')}
   else t=LL('各格位置本來就準','All cells were already in place');
-  {const lowK=ks.filter(k=>base(alignRep[k])==='low'),man=lowK.filter(k=>!(cells[k]&&cells[k].sync));   /* every cell that 'could not be aligned' is a take the metronome already placed: say so, no warning icon */
+  {const lowK=ks.filter(k=>base(alignRep[k])==='low'),man=lowK.filter(k=>!(cells[k]&&cells[k].sync));   /* R7.25: every cell that 'could not be aligned' is a take the metronome already placed: say so, no warning icon */
     if(lowK.length&&!man.length){ok=true;
       if(ks.length===1){t=LL('第 '+(ks[0]+1)+' 格已按拍子機放好','Cell '+(ks[0]+1)+' is placed by the metronome');sub=LL('如果聽起來不合拍，可以在下面拖動波形微調','If it does not sound in time, drag its waveform below')}
       else{t=n.moved?LL('已對齊 '+n.moved+' 格，'+lowK.length+' 格已按拍子機放好','Aligned '+n.moved+', '+lowK.length+' placed by the metronome'):LL('已按拍子機放好位置','Placed by the metronome');sub=LL('如果聽起來不合拍，可以在下面拖動波形微調','If it does not sound in time, drag the waveforms below')}}}
@@ -2093,7 +2238,7 @@ function devLatMs(){if(latMs&&!latStale)return latTrue();
 const warns={};
 function warn(k,t){if(t)warns[k]=t;else delete warns[k];warnShow()}
 function warnShow(){const w=$('#stwarn'),v=Object.values(warns).map(x=>typeof x==='function'?x():x);w.textContent=v.join(LL('　','  '));w.hidden=!v.length}
-/* shown AFTER a take (once per page load), not in the middle of it: a player cannot read or act on it while playing. */
+/* R7.31: shown AFTER a take (once per page load), not in the middle of it: a player cannot read or act on it while playing. */
 let draftTold=false;
 const DRAFT_MSG=()=>LL('⚠ 這個瀏覽器用 MP4 錄音時不會邊錄邊保存。如果錄音中途閃退，正在錄的那一格會遺失。想邊錄邊保存：「準備」›「更多設定」›「錄製編碼」改選 WebM (VP8)。','⚠ In MP4 this browser does not save a draft while recording, so a crash in the middle of a take would lose that take. To save drafts: Setup > More settings > Recording codec > WebM (VP8).');
 const DB={
@@ -2501,7 +2646,7 @@ const decorateFunction=(original,{before,after}={})=>function(...args){
   return result;
 };
 
-/* the helper that ran the Ready-check poll (startUiInterval / stopUiInterval) is gone with it. */
+/* R7.24: the helper that ran the Ready-check poll (startUiInterval / stopUiInterval) is gone with it. */
 
 /* 5-9-12：版型＝每列幾格＋列高；預覽與匯出共用 geom() */
 let lay='auto';
@@ -2650,7 +2795,7 @@ function render(only,hold){
     d.className='cell'+(i==cur?' cur':'')+(live?' live':'');d.style.setProperty('--hc',COL[i%COL.length]);{const q=g.rc[i];d.style.gridColumn=(q[0]+1)+' / span '+q[2];d.style.gridRow=(q[1]+1)+' / span '+q[3]}
     const pv=!recording&&i==cur&&!cells[i]&&stream&&stream.active&&!audioOnly&&document.body.dataset.tab==='rec';
     if(!cells[i]&&!live&&!pv)d.classList.add('emp');
-    if((live||pv)&&!audioOnly){const v=document.createElement('video');v.playsInline=true;v.muted=true;v.className='lv';v.srcObject=stream;v.play().catch(()=>{});d.appendChild(v);/* 輔助線 overlay 已移除 */}
+    if((live||pv)&&!audioOnly){const v=document.createElement('video');v.playsInline=true;v.muted=true;v.autoplay=true;v.setAttribute('playsinline','');v.setAttribute('muted','');v.className='lv';v.srcObject=stream;v.addEventListener('loadedmetadata',()=>v.play().catch(()=>{}),{once:true});v.addEventListener('pause',()=>{if(v.isConnected&&v.srcObject)setTimeout(()=>{if(v.isConnected&&v.paused)v.play().catch(()=>{})},50)});d.appendChild(v);v.play().catch(()=>{});/* 輔助線 overlay 已移除 */}
     else if(cells[i]){const v=document.createElement('video');v.playsInline=true;v.preload='auto';v.muted=true;v.src=cells[i].url;d.appendChild(v);
       const cv=document.createElement('canvas');cv.className='vc';cv._v=v;cv._i=i;d.appendChild(cv);['play','playing','seeked','loadeddata','canplay'].forEach(ev=>v.addEventListener(ev,paintKick));
       v.addEventListener('seeking',()=>{v._mt=null});
@@ -2757,7 +2902,7 @@ if(!CF){const grP=t.querySelector('.grP');if(grP){grP.querySelectorAll('input[da
       offn.onkeydown=e=>{if(e.key==='Enter')offn.blur()};
       offn.ondblclick=()=>{setOff(i,0);offn.value=0;offDone()}}
     t.querySelectorAll('[data-n]').forEach(b=>b.onclick=()=>{setOff(i,(c.off||0)+(+b.dataset.n));offDone()});
-    {const rb=t.querySelector('[data-rstsnd]');if(rb)rb.onclick=()=>{t.querySelectorAll('input[data-k=vol],input[data-k2=pan]').forEach(i=>i.dispatchEvent(new MouseEvent('dblclick')))}}   /* reuses the double-click reset of the two sliders */
+    {const rb=t.querySelector('[data-rstsnd]');if(rb)rb.onclick=()=>{t.querySelectorAll('input[data-k=vol],input[data-k2=pan]').forEach(i=>i.dispatchEvent(new MouseEvent('dblclick')))}}   /* R1.0b: reuses the double-click reset of the two sliders */
     {const hb=t.querySelector('[data-hp]');if(hb){const HP=[0,80,120,200],lab=()=>{const v=c.hp||0;hb.textContent=LL('低切','Low cut')+' '+(v?v+' Hz':LL('關','Off'));hb.classList.toggle('on',v>0)};lab();
       hb.onclick=()=>{const v=c.hp||0;const nx=HP.find(x=>x>v);c.hp=nx===undefined?0:nx;lab();applyMix()}}}
     t.querySelectorAll('input[data-k2]').forEach(inp=>{const k=inp.dataset.k2,sp=inp.nextElementSibling&&inp.nextElementSibling.tagName==='SPAN'?inp.nextElementSibling:null;
@@ -2837,7 +2982,7 @@ if(!CF){const grP=t.querySelector('.grP');if(grP){grP.querySelectorAll('input[da
   ui();refreshTotal();
   if(document.body.dataset.tab==='mix')loadWaves();
 }
-/* swapping two cells moves everything that belongs to the cell, not only the recording. Before, the recording moved but the cell NAME stayed where it was
+/* R7.15: swapping two cells moves everything that belongs to the cell, not only the recording. Before, the recording moved but the cell NAME stayed where it was
    (so 'Alto' labelled the wrong voice on Record, on the Mix track list and on the exported video), the 'use as reference' tick and the open Edit panel stayed behind too. */
 function swapCells(i,j){
   const tmp=cells[i];cells[i]=cells[j]||null;cells[j]=tmp;
@@ -2919,7 +3064,7 @@ async function loadWaves(){
   calcView();drawWaves()}
 let rzT=0;addEventListener('resize',()=>{clearTimeout(rzT);rzT=setTimeout(()=>{if(document.body.dataset.tab==='mix')drawWaves()},120)});
 
-function vids(except){return[...stage.children].map((d,i)=>({v:d.querySelector('video'),i})).filter(o=>o.v&&cells[o.i]&&o.i!==except)}
+function vids(except){return[...stage.children].map((d,i)=>({v:d.querySelector('video:not(.lv)'),i})).filter(o=>o.v&&cells[o.i]&&o.i!==except)}   /* R7.35: never the live camera preview (re-recording a cell froze it: stopAll() paused it) */
 /* 畫面用 <video>（靜音），聲音用解碼後的 AudioBuffer 播放，避免影片元素接 Web Audio 造成沒有畫面 */
 let playing=[],playTok=0;
 let tp={on:false,pos:0,T0:0,from:0,dur:0,drag:false,raf:0,lab:''};
@@ -3017,16 +3162,16 @@ const audioC=()=>{const au={echoCancellation:false,noiseSuppression:false,autoGa
    reported workaround. Measured in Chromium: MP4 with a timeslice keeps its duration and frame count, but WebM with a timeslice loses its duration header,
    so WebM stays un-sliced. */
 const sliceFor=r=>/video\/mp4/i.test((r&&r.mimeType)||'')?1000:undefined;
-/* getStream() with a time limit. A microphone/camera request that never answers (permission prompt ignored, device hung) used to lock the app in the headphone sync check,
+/* R7.22: getStream() with a time limit. A microphone/camera request that never answers (permission prompt ignored, device hung) used to lock the app in the headphone sync check,
    calibration and the level check ('Level check' left Record dead) because each of them waited for it with nothing to end the wait. Returns the stream state, or 'timeout'. */
 const getStreamT=(ms)=>Promise.race([getStream(),new Promise(r=>setTimeout(()=>r('timeout'),ms||20000))]);
 const NOANS=()=>LL('相機或麥克風沒有回應（可能正等你允許權限）。請允許後再試。','The camera or microphone did not answer (it may be waiting for you to allow access). Allow it, then try again.');
-/* (F-04): what went wrong with the microphone, in words that point at the real cause. Before, every failure said "allow permission and use HTTPS", also when the real cause was an unplugged USB-C headset. */
+/* R7.29 (F-04): what went wrong with the microphone, in words that point at the real cause. Before, every failure said "allow permission and use HTTPS", also when the real cause was an unplugged USB-C headset. */
 const micErrMsg=e=>{const n=(e&&e.name)||'';
   if(n==='NotFoundError'||n==='OverconstrainedError'||n==='DevicesNotFoundError')return LL('找不到可用的麥克風。請接上麥克風或耳機，或在「準備 › 更多設定」把錄音裝置改回系統預設。','No usable microphone was found. Plug one in, or set the input device back to System default in Setup > More settings.');
   if(n==='NotReadableError'||n==='AbortError'||n==='TrackStartError')return LL('麥克風無法啟動，可能正被其他 App 使用。請關閉其他用到麥克風的 App 後再試。','The microphone could not start; another app may be using it. Close other apps that use the microphone, then try again.');
   return LL('無法使用麥克風。請在瀏覽器網址列允許麥克風權限，並用 HTTPS 網址開啟。','Cannot use the microphone. Allow microphone permission in the browser address bar and open the page over HTTPS.')};
-/* (F-04): getUserMedia, but when the microphone the player CHOSE (micId) has gone (unplugged USB-C headset, dropped Bluetooth) fall back to the system default and say so, instead of failing.
+/* R7.29 (F-04): getUserMedia, but when the microphone the player CHOSE (micId) has gone (unplugged USB-C headset, dropped Bluetooth) fall back to the system default and say so, instead of failing.
    The retry repeats the identical request except for the device, so a missing camera or a refused permission is not mistaken for a missing microphone: then micId is kept and the original error is raised.
    A device that exists but is busy (NotReadableError) is not replaced silently. */
 async function gumMic(c){
@@ -3109,7 +3254,7 @@ function countTick(box,txt){fitCount(box,txt);box.textContent=txt;box.classList.
 async function countIn(hook,leadS){
   const box=$('#count'),ac=ctx(),sec=60/bpm(),sleep=ms=>new Promise(r=>setTimeout(r,ms));
   box.style.display='grid';counting=true;cancelCount=false;ui();
-  /* resume() can stay pending for ever (a phone that paused sound, an interrupted iOS audio session); Cancel could not act while waiting here and nothing ever ended it.
+  /* R7.22: resume() can stay pending for ever (a phone that paused sound, an interrupted iOS audio session); Cancel could not act while waiting here and nothing ever ended it.
      Wait at most 2.5 s; with no running audio clock a count-in is impossible, so the take is abandoned with a message. */
   try{if(ac.state!=='running')await Promise.race([ac.resume(),new Promise(r=>setTimeout(r,2500))])}catch(e){}
   if(ac.state!=='running'&&!cancelCount){cancelCount=true;failWhy=LL('音訊引擎沒有啟動（手機可能暫停了聲音）。請點一下畫面，或重新整理頁面後再試。','The audio engine did not start (the phone may have paused sound). Tap the screen or reload the page, then try again.')}
@@ -3124,7 +3269,7 @@ async function countIn(hook,leadS){
       if(vm()!=='vis')clickSnd(ac,t,hi?1600:1100,.06,cg);
       cueAt(t,()=>{if(cancelCount||!counting)return;countTick(box,n);if(vm()!=='snd')flash(hi);if(vibMode()!=='off'&&navigator.vibrate){try{navigator.vibrate(hi?30:15)}catch(e){}}})}
     /* v34：預備拍最後 0.2 秒前就叫 hook（開錄音機＋排好其他格＋節拍），唔好等到 T0 之後先開，否則第一拍會被切 */
-    const wall0=performance.now(),wallMax=(tot*sec+1.5)*1000+3000;   /* the audio clock must advance; if it does not, give up instead of waiting for ever */
+    const wall0=performance.now(),wallMax=(tot*sec+1.5)*1000+3000;   /* R7.22: the audio clock must advance; if it does not, give up instead of waiting for ever */
     let hk=0;while(!cancelCount&&ac.currentTime<T0-.05){if(performance.now()-wall0>wallMax){cancelCount=true;failWhy=LL('音訊時鐘停住了，無法倒數。請重新整理頁面後再試。','The audio clock stopped, so the count-in cannot run. Reload the page and try again.');break}if(hook&&!hk&&ac.currentTime>=T0-Math.min(leadS||.2,Math.max(.2,tot*sec-.15))){hk=1;try{hook(T0)}catch(e){}}await sleep(4)}
     if(hook&&!hk&&!cancelCount){hk=1;try{hook(T0)}catch(e){}}}
   if(cancelCount){cg.gain.value=0;T0=0;cueClear()}
@@ -3134,12 +3279,12 @@ async function countIn(hook,leadS){
 }
 async function startRec(i){
   if(busy||recording||chkOn)return;
-  /* a browser without MediaRecorder / AudioContext used to lock up on the first press (busy was set, then ctx() threw) */
+  /* R7.22: a browser without MediaRecorder / AudioContext used to lock up on the first press (busy was set, then ctx() threw) */
   if(typeof MediaRecorder==='undefined'||!(window.AudioContext||window.webkitAudioContext)){msg(LL('這個瀏覽器不支援錄音，請改用較新版本的 Chrome 或 Safari。','This browser cannot record. Use a recent version of Chrome or Safari.'),'err');return}
   {const e=$('#chkmsg');if(e)e.hidden=true}
   if(typeof i==='number')cur=i;
   hideTake();busy=true;ctx();
-  /* a camera/microphone request that never answers (permission prompt ignored, device hung) locked every control, the tab bar included. Wait 20 s at most. */
+  /* R7.22: a camera/microphone request that never answers (permission prompt ignored, device hung) locked every control, the tab bar included. Wait 20 s at most. */
   {const gs=await Promise.race([getStream(),new Promise(r=>setTimeout(()=>r('timeout'),20000))]);
    if(gs==='timeout'){busy=false;retMix=false;msg(LL('相機或麥克風沒有回應（可能正等你允許權限）。請允許後再按錄音。','The camera or microphone did not answer (it may be waiting for you to allow access). Allow it, then tap Record again.'),'err');return}
    if(!gs){busy=false;retMix=false;return}}
@@ -3174,17 +3319,17 @@ async function startRec(i){
     stopClick();alignPrev=null;clearAlignRep();$('#undoAlign').hidden=true;tp.pos=0;
     const blob=new Blob(chunks,{type:mr.mimeType||'video/webm'});
     const old=cells[idx];if(old)URL.revokeObjectURL(old.url);
-    clearInterval(rt);$('#rtimer').hidden=true;$('#rst').hidden=true;cells[idx]={blob,url:URL.createObjectURL(blob),vol:old?old.vol:1,mute:old?!!old.mute:false,solo:old?!!old.solo:false,off:0,bpm:bpm(),lat:leadLat!=null?leadLat:newLat,syncV:SYNC_V,sync:syncMeta||SYNC2.meta(syncTake),residual:0,clip:clipInfo(),pk:recPk,qi,gfNew:true,recSec:Math.max(0,A.currentTime-TS)+(syncMeta&&typeof syncMeta.lead==='number'?syncMeta.lead/1000:0)};SYNC2.end(syncTake);   /* how long the recorder really ran (not saved with the project; only the take bar uses it) */
+    clearInterval(rt);$('#rtimer').hidden=true;$('#rst').hidden=true;cells[idx]={blob,url:URL.createObjectURL(blob),vol:old?old.vol:1,mute:old?!!old.mute:false,solo:old?!!old.solo:false,off:0,bpm:bpm(),lat:leadLat!=null?leadLat:newLat,syncV:SYNC_V,sync:syncMeta||SYNC2.meta(syncTake),residual:0,clip:clipInfo(),pk:recPk,qi,gfNew:true,recSec:Math.max(0,A.currentTime-TS)+(syncMeta&&typeof syncMeta.lead==='number'?syncMeta.lead/1000:0)};SYNC2.end(syncTake);   /* R7.31: how long the recorder really ran (not saved with the project; only the take bar uses it) */
     recording=false;prepPhase=false;busy=false;recForce=null;if(RD){saveOk=false;saveNow().catch(()=>{}).then(()=>{if(saveOk)rdClear()})}
     let nx=-1;for(let k=0;k<N;k++)if(!cells[k]){nx=k;break}if(nx>=0)cur=nx;
-    render();showTake(idx);if(lowStop){lowStop=false;msg(LL('⚠ 儲存空間快滿，已自動停止錄音；已錄的 '+fmtT(lowStopT)+' 已保留。請先匯出備份並刪除不需要的專案，再繼續錄。','⚠ Storage is almost full, so recording stopped automatically; the '+fmtT(lowStopT)+' recorded so far is kept. Export a backup and delete projects you do not need, then continue.'),'err')}else if(cells[idx]&&cells[idx].sync&&typeof cells[idx].sync.lead==='number'&&cells[idx].sync.lead<LATE_MS)msg(LL('⚠ 第 '+(idx+1)+' 格的錄音機比第一拍晚啟動（手機當時較忙），開頭可能被切掉。建議關閉其他 App 後按「重錄」。','⚠ The recorder for cell '+(idx+1)+' started after beat 1 (the device was busy), so the start may be cut off. Close other apps and tap Redo.'),'err');else if(cells[idx]&&cells[idx].clip)msg(LL('第 '+(idx+1)+' 格有削波（最高 '+cells[idx].clip.pk+' dB），聲音會破。建議離遠一點或斜一點吹，按「重錄」再來。','Cell '+(idx+1)+' clipped (peak '+cells[idx].clip.pk+' dB) and will sound distorted. Move back or angle the horn away, then tap Redo.'),'err');else msg(LL('第 '+(idx+1)+' 格錄好了。可以選下一格繼續錄，或到「混音」。','Cell '+(idx+1)+' recorded. Pick the next cell to continue, or go to Mix.'),'ok')   /* camera size and 'Sync Engine' were noise; real problems still show in the take bar */;
+    render();showTake(idx);if(lowStop){lowStop=false;msg(LL('⚠ 儲存空間快滿，已自動停止錄音；已錄的 '+fmtT(lowStopT)+' 已保留。請先匯出備份並刪除不需要的專案，再繼續錄。','⚠ Storage is almost full, so recording stopped automatically; the '+fmtT(lowStopT)+' recorded so far is kept. Export a backup and delete projects you do not need, then continue.'),'err')}else if(cells[idx]&&cells[idx].sync&&typeof cells[idx].sync.lead==='number'&&cells[idx].sync.lead<LATE_MS)msg(LL('⚠ 第 '+(idx+1)+' 格的錄音機比第一拍晚啟動（手機當時較忙），開頭可能被切掉。建議關閉其他 App 後按「重錄」。','⚠ The recorder for cell '+(idx+1)+' started after beat 1 (the device was busy), so the start may be cut off. Close other apps and tap Redo.'),'err');else if(cells[idx]&&cells[idx].clip)msg(LL('第 '+(idx+1)+' 格有削波（最高 '+cells[idx].clip.pk+' dB），聲音會破。建議離遠一點或斜一點吹，按「重錄」再來。','Cell '+(idx+1)+' clipped (peak '+cells[idx].clip.pk+' dB) and will sound distorted. Move back or angle the horn away, then tap Redo.'),'err');else msg(LL('第 '+(idx+1)+' 格錄好了。可以選下一格繼續錄，或到「混音」。','Cell '+(idx+1)+' recorded. Pick the next cell to continue, or go to Mix.'),'ok')   /* R7.25: camera size and 'Sync Engine' were noise; real problems still show in the take bar */;
     {const w=qiWarn(cells[idx]);if(w.length&&!/儲存空間快滿|Storage is almost full/.test($('#msg').textContent)&&!(cells[idx].clip)&&!(cells[idx].sync&&cells[idx].sync.lead<LATE_MS))msg(LL('⚠ 第 '+(idx+1)+' 格：'+w[0],'⚠ Cell '+(idx+1)+': '+w[0]),'hi')}
     {const el=stage.children[idx];if(el){el.classList.remove('done');void el.offsetWidth;el.classList.add('done');setTimeout(()=>el.classList.remove('done'),500)}}
     if(retMix){retMix=false;go('mix')}
     verifyTake(idx,blob,Math.max(0,A.currentTime-TS));
     (async()=>{await gridRefine(idx);if($('#auto').checked&&cells.filter(Boolean).length>1)autoAlign(idx).then(n=>autoBalance(idx,n))})();
   };
-  /* one way out for a take that cannot go on: the recorder refused to start (camera taken by another app) or never reported that it stopped. Before, `recording` stayed true
+  /* R7.22: one way out for a take that cannot go on: the recorder refused to start (camera taken by another app) or never reported that it stopped. Before, `recording` stayed true
      for ever, Stop did nothing and every control (tab bar, projects, export) stayed locked until the page was reloaded. */
   const failTake=why=>{
     if(counting){cancelCount=true;failWhy=why;return}   /* still counting in: let the normal cancel path finish and show the reason */
@@ -3202,21 +3347,21 @@ async function startRec(i){
     /* 先排好聲音（絕對時間），mr.start 可能卡住主線程，放最後 */
     po.then(()=>{if(cancelCount||!TS||!recording)return;if(RD)rdStart(curId,idx,newLat,rdT);
       try{mr.start(RD?1000:sliceFor(mr));
-        /* 'save a draft every second' only works if the recorder hands over data while it runs. Measured: MP4 with a time slice delivers nothing until Stop in the Chromium tested (WebM delivers every second),
+        /* R7.24: 'save a draft every second' only works if the recorder hands over data while it runs. Measured: MP4 with a time slice delivers nothing until Stop in the Chromium tested (WebM delivers every second),
            so a crash lost the whole take although the setting promised otherwise. With a 1 s time slice at least 3 pieces should exist after 3.5 s; fewer than 2 (measured: none, or only the file header) means the draft is useless, so say so while there is still time to act. */
         if(RD)setTimeout(()=>{if(recording&&!counting&&mr&&mr.state==='recording'&&chunks.length<2)draftMiss=true},3500)}catch(e){failTake(LL('錄音機無法啟動（相機或麥克風可能被其他 App 佔用）。這次錄音已取消。','The recorder could not start (the camera or microphone may be in use by another app). This take was cancelled.'))}})};
   const leadS=Math.min(3,Math.max(.2,gi.length?Math.max(0,...gi.map(k=>(cells[k].lat||0)))/1000+.12:.2));
   syncTake=SYNC2.begin(idx,0);
-  prepPhase=false;TS=cancelPre?0:await countIn(early,leadS);cancelPre=false;   /* Stop pressed during the preparation cancels the take (it used to be ignored while the button already said Stop) */
+  prepPhase=false;TS=cancelPre?0:await countIn(early,leadS);cancelPre=false;   /* R7.22: Stop pressed during the preparation cancels the take (it used to be ignored while the button already said Stop) */
   if(syncTake)syncTake.TS=TS||0;
   if(!TS){try{if(mr&&mr.state==='recording'){mr.ondataavailable=null;mr.onstop=null;mr.stop()}}catch(e){}stopClick();cueClear();stopAll();if(RD){try{rdClear()}catch(e){}}
     camLock(false);recording=false;prepPhase=false;busy=false;cancelCount=false;recForce=null;SYNC2.end(syncTake);render();{const w=failWhy;failWhy='';msg(w||LL('已取消錄音。','Recording cancelled.'),w?'err':undefined)}if(retMix){retMix=false;go('mix')}return}
-  /* the readout used to be rewritten ~200 times a second (a 30 ms timer AND every animation frame each rewrote the time, the bar number and every beat dot even
+  /* R7.15: the readout used to be rewritten ~200 times a second (a 30 ms timer AND every animation frame each rewrote the time, the bar number and every beat dot even
      when nothing had changed; the time changes once a second). Now each piece is written only when its value changes, and the timer is only a 250 ms fallback for when the
      page is in the background and animation frames pause. */
   let lt='',lbar=-1,lbi=-1,lk='',rtm=null,rbn=null,dots=null,tag=null;
   const tick=()=>{const bt=+$('#beats').value||4,bb=Math.max(0,Math.floor((A.currentTime-cueLat(A)-TS)*bpm()/60)),s=Math.max(0,A.currentTime-TS)|0,tx=(s/60|0)+':'+String(s%60).padStart(2,'0'),rm=$('#rtimer'),r2=$('#rst'),rk=bt+'|'+LANG;
-    if(!tag||!tag.isConnected){tag=stage.querySelector('.live .tag');if(tag){const tl=LL('錄音中','Recording');if(tag.textContent!==tl)tag.textContent=tl}}   /* the time is in the readout; the long tag was cut off in narrow cells */
+    if(!tag||!tag.isConnected){tag=stage.querySelector('.live .tag');if(tag){const tl=LL('錄音中','Recording');if(tag.textContent!==tl)tag.textContent=tl}}   /* R7.13: the time is in the readout; the long tag was cut off in narrow cells */
     if(lk!==rk){lk=rk;r2.innerHTML='<i class="rdot"></i><b class="rtm"></b><span class="rbar"><small>'+LL('小節','BAR')+'</small><b></b></span><span class="rbts">'+'<i></i>'.repeat(bt)+'</span>';
       rtm=r2.querySelector('.rtm');rbn=r2.querySelector('.rbar b');dots=[...r2.querySelector('.rbts').children];lt='';lbar=-1;lbi=-1}
     if(tx!==lt){lt=tx;rm.textContent=tx;rtm.textContent=tx;if(rm.hidden)rm.hidden=false}
@@ -3241,19 +3386,19 @@ function recPress(){
   if(cells[cur]&&!confirm(LL('第 '+(cur+1)+' 格已有錄音，重錄會覆蓋，要繼續嗎？','Cell '+(cur+1)+' already has a recording. Re-recording will overwrite it. Continue?')))return;
   startRec()}
 function stopRec(){if(counting){cancelCount=true;return}if(recording&&prepPhase){cancelPre=true;return}stopClick();
-  /* if the recorder does not report 'stop' within 4 s, or it never started, finish or abandon the take ourselves so Stop always ends it */
+  /* R7.22: if the recorder does not report 'stop' within 4 s, or it never started, finish or abandon the take ourselves so Stop always ends it */
   if(recording&&mr&&mr.state=='recording'){mr.stop();stopAll();const h=recForce;setTimeout(()=>{if(h&&recording&&recForce===h)h()},4000)}   /* only for THIS take: a timer left over from the previous take must never end the next one */
   else{if(recording&&recForce)recForce();stopAll()}}
 
 /* ---------- auto align（5-8-8：onset 特徵、5ms 解像度、多格共識、信心判斷） ---------- */
 const NHOP=.005;
-/* a frame is hop = round(sampleRate x 5 ms) samples, which is NOT exactly 5 ms at 44.1 kHz (221 samples = 5.011 ms, 0.23% too long), and the code converted frame numbers to
+/* R7.24: a frame is hop = round(sampleRate x 5 ms) samples, which is NOT exactly 5 ms at 44.1 kHz (221 samples = 5.011 ms, 0.23% too long), and the code converted frame numbers to
    time with 5 ms. The error grows with time (45 ms after 20 s): the beat-grid fit after each take failed completely on 44.1 kHz devices (z 2 instead of 10, no correction made) and the
    headphone-sync clap check read about 10 ms low. Every novelty array now carries its true frame length in seconds (.hs) and every time conversion uses it. 48 kHz is unaffected. */
-/* a match needs a normalised correlation of at least this. Measured on synthetic material: the same rhythm (even 25% of it damaged and extra notes added) scored 0.48-1.00;
+/* R7.24: a match needs a normalised correlation of at least this. Measured on synthetic material: the same rhythm (even 25% of it damaged and extra notes added) scored 0.48-1.00;
    two unrelated rhythms scored 0.075-0.31 (89 of 90 passed the old 0.08 limit and would have been moved by an arbitrary amount, silently). 0.30 keeps a wide margin below the weakest
    true match. Real recordings have not been measured; a legato part with soft onsets can score lower and is then left in place with the 'adjust by hand' message. */
-/* with the spectral feature the same rhythm scored 0.40-0.81 (even legato, 5 dB noise, no loudness dip) and unrelated rhythms 0.08-0.32 (60 synthetic pairs), so the limit moves from 0.30 to 0.35. */
+/* R7.27: with the spectral feature the same rhythm scored 0.40-0.81 (even legato, 5 dB noise, no loudness dip) and unrelated rhythms 0.08-0.32 (60 synthetic pairs), so the limit moves from 0.30 to 0.35. */
 const ALIGN_PK=.35;
 const ALIGN_PRIOR=.25;
 async function novelty(i){
@@ -3261,7 +3406,7 @@ async function novelty(i){
   const b=await bufOf(i);if(!b){c.nov=null;return null}
   const d=b.getChannelData(0),hop=Math.max(1,Math.round(b.sampleRate*NHOP)),win=hop*2,n=Math.floor((d.length-win)/hop)+1;
   if(n<16){c.nov=null;return null}
-  const E=new Float32Array(n);let top=-9,t0=performance.now();   /* (F-02): hands control back every ~20 ms; the result is unchanged */
+  const E=new Float32Array(n);let top=-9,t0=performance.now();   /* R7.28 (F-02): hands control back every ~20 ms; the result is unchanged */
   for(let f=0;f<n;f++){let s=0;const o=f*hop;for(let k=0;k<win;k++){const x=d[o+k];s+=x*x}
     E[f]=Math.log10(1e-7+Math.sqrt(s/win));if(E[f]>top)top=E[f];if((f&1023)===1023&&performance.now()-t0>20){await new Promise(res=>setTimeout(res,0));t0=performance.now()}}
   const S=new Float32Array(n);
@@ -3281,7 +3426,7 @@ function xcorr(a,b,L0,L1){
     for(let n=n0;n<n1;n++)s+=a[n]*b[n+L];r[L-L0]=s}
   return r;
 }
-/* spectral onset feature for Auto-align. The old feature (novelty) follows only the overall loudness, so a legato part (notes joined with no gap, soft attacks) has almost no
+/* R7.27: spectral onset feature for Auto-align. The old feature (novelty) follows only the overall loudness, so a legato part (notes joined with no gap, soft attacks) has almost no
    onsets in it; in a synthetic test (30 ms pitch glide, no loudness dip) the correlation peak then sat on the wrong beat of the click grid (about 300 ms off at 100 bpm) and nothing was
    accepted. This feature looks at the SPECTRUM instead: a short FFT (about 46 ms Hann window, a new frame every 5 ms) of the sound reduced to ~11 kHz, the level of ~34 narrow bands
    (1/6 octave, 90 Hz - 4 kHz, never narrower than one FFT bin) in log scale, and the sum of how much each band ROSE since the previous frame (rises only). A note change moves energy
@@ -3322,7 +3467,7 @@ async function noveltyMB(i){
   V.hs=hop/sr;c.nov2=V;return V}
 const ALIGN_FEAT='mb';   /* 'mb' = the spectral feature above, 'amp' = the old loudness-only one */
 const alignFeat=k=>ALIGN_FEAT==='amp'?novelty(k):noveltyMB(k);
-/* (F-02): the same correlation as xcorr(), but it hands control back to the page every ~20 ms. Over 3 minutes of audio one correlation is tens of millions of multiplications; on a 4x slower CPU
+/* R7.28 (F-02): the same correlation as xcorr(), but it hands control back to the page every ~20 ms. Over 3 minutes of audio one correlation is tens of millions of multiplications; on a 4x slower CPU
    (a phone) the old single loop kept the page busy for about 0.6 s. */
 async function xcorrPart(a,b,L0,L1){
   const r=new Float32Array(L1-L0+1);let t0=performance.now();
@@ -3330,13 +3475,13 @@ async function xcorrPart(a,b,L0,L1){
     for(let n=n0;n<n1;n++)s+=a[n]*b[n+L];r[L-L0]=s;
     if((L&3)===0&&performance.now()-t0>20){await new Promise(res=>setTimeout(res,0));t0=performance.now()}}
   return r}
-/* (F-01): a match inside the search window is only trusted if no stronger match exists just OUTSIDE it. A false accept happens when the real offset is beyond the window: the music repeats on the
+/* R7.28 (F-01): a match inside the search window is only trusted if no stronger match exists just OUTSIDE it. A false accept happens when the real offset is beyond the window: the music repeats on the
    rhythmic grid, so the correlation shows a smaller copy of the true peak one grid step inside the window, while the real (larger) peak sits outside. The correlation is therefore also computed out to
    +-ALIGN_WIDE_MS (raw, without the click-preference weighting); if the best value outside the window is more than ALIGN_WIDE_RATIO times the best value inside, the result is refused.
    Measured with ratio 1.05 on generated sound (14 pairs x 4 offsets x 5 scenarios): wrong accepts 63 -> 4 (none on grid-locked music); ratio 1.15 still let 3 of 28 through, 1.0 and below refused more real matches.
    (F-02) The outside strips cost about 4x the normal search, so they are only computed for a result that would otherwise be accepted; a refused result is refused either way. */
 const ALIGN_WIDE_MS=2500,ALIGN_WIDE_RATIO=1.05;
-/* (F-19): a take recorded to the click already sits where the metronome put it (device compensation alone: 25 of 27 instruments within 15 ms of each other). The automatic alignment after a take
+/* R7.33 (F-19): a take recorded to the click already sits where the metronome put it (device compensation alone: 25 of 27 instruments within 15 ms of each other). The automatic alignment after a take
    therefore only accepts a move of at most this many ms for such a take; a larger move means the rhythm differs from the others (an off-beat part was moved 187 ms, a different part 84 ms) and the take stays
    where the click put it ('placed by the metronome'). The Auto-align button on Mix and imported files are not limited. */
 const ALIGN_REC_MAX=60;
@@ -3350,7 +3495,7 @@ async function alignOne(i,refs,searchMs){
   for(const p of part){
     const rj=Math.round(p.ej/hopMs),base=rj-m0;dl+=p.ej-rj*hopMs;p.base=base;
     const r=await xcorrPart(p.xj,xi,base-R,base+R);
-    /* metronome prior: two takes that were both recorded to the same click already sit close together (the click and the beat-grid fit placed them), so a far-away peak is
+    /* R7.27 metronome prior: two takes that were both recorded to the same click already sit close together (the click and the beat-grid fit placed them), so a far-away peak is
        more likely a false match than a real one. Their scores fall off gently with distance from the current position (down to 75% at the edge of the window). Imported files have
        no such placement and are not touched. */
     for(let k=-R;k<=R;k++){const w=(p.rec?1-ALIGN_PRIOR*(k/R)*(k/R):1)/part.length;sc[k+R]+=r[R-k]*w;raw[k+R]+=r[R-k]/part.length}}
@@ -3397,7 +3542,7 @@ function gridPhase(V,hop,b0,P){
 
 /* 錄音時拍子機嘅格線位置已知（第一拍＝檔案內 lat 位置，每拍 60/bpm）。
    量度該格起音相對格線嘅偏移，修正 lat，令錄音時其他格同拍子機對準。幂等：修正後再跑偏移≈0 */
-/* (finding F-18). What this measures: how many ms after the click grid the first notes of THIS take really start (ms > 0 = the player is late, or the device delay was under-estimated).
+/* R7.33 (finding F-18). What this measures: how many ms after the click grid the first notes of THIS take really start (ms > 0 = the player is late, or the device delay was under-estimated).
    Sync-v2 takes (everything recorded since v1.0): the old code ADDED ms to the take's residual, but a residual moves the take LATER, so a late take was moved even later (measured with 27 synthetic instruments:
    the spread between instruments went from 16 ms to 43 ms; with the sign reversed alone it was still 30 ms, because only 18 of 27 takes gave a measurement and those moved while the others did not).
    Now a v2 take is lined up with the takes recorded earlier IN THIS SESSION: residual = (median of where their notes sit after their own adjustment) - (this measurement), at most +-GF_MAX ms; the first take is only the reference (residual 0).
@@ -3435,8 +3580,8 @@ async function autoAlign(only){
   if(!(typeof only==='number'&&cells[only]))alWait();
   let note='';
   try{
-    const sr=latMs?150:500,one=typeof only==='number'&&cells[only],prev=cells.map(c=>c?c.off:null),moved=[],low=[],big={};   /* big[i] = how far the match wanted to move a recorded take that was refused (ms; <0 = earlier) */
-    const put=(i,r,cap)=>{const c=cells[i],sp=syncParts(i),v=Math.round(r.eff-sp.residual+sp.capture);   /* the position stored is the manual part; the grid adjustment (residual) is added on top by effOf, so it has to be taken out here */
+    const sr=latMs?150:500,one=typeof only==='number'&&cells[only],prev=cells.map(c=>c?c.off:null),moved=[],low=[],big={};   /* R7.34: big[i] = how far the match wanted to move a recorded take that was refused (ms; <0 = earlier) */
+    const put=(i,r,cap)=>{const c=cells[i],sp=syncParts(i),v=Math.round(r.eff-sp.residual+sp.capture);   /* R7.33: the position stored is the manual part; the grid adjustment (residual) is added on top by effOf, so it has to be taken out here */
       if(Math.abs(v)>1000)return false;if(cap!=null&&Math.abs(v-(c.off||0))>cap){big[i]=v-(c.off||0);return false}c.off=v;moved.push(i);return true};
     if(one){
       const r=await alignRobust(only,ids.filter(k=>k!==only).slice(0,6),sr);
@@ -3501,7 +3646,7 @@ async function levelOf(i){
   for(let f=0;f<n;f++)if(P[f]>=th){a+=P[f];m++}
   c.lvl=m?Math.sqrt(a/m):0;return c.lvl;
 }
-/* what the Balance button did, in one line under the button (the Mix tab hides the status line, so the message used to be invisible there) */
+/* R7.31: what the Balance button did, in one line under the button (the Mix tab hides the status line, so the message used to be invisible there) */
 function balReport(ids,vb,lim){const e=$('#balRes');if(!e)return;
   const ch=ids.map((i,k)=>({i,db:20*Math.log10((cells[i].vol||1)/(vb[k]||1))})).filter(x=>Math.abs(x.db)>=.5);
   const sh=lim&&lim.shift<-.5?LL(' 為了讓最小聲的一格夠大聲，整體降低了 '+(-lim.shift).toFixed(1)+' dB（匯出時可再調整音量）。',' To make the quietest cell loud enough everything was lowered by '+(-lim.shift).toFixed(1)+' dB (the export can raise the level again).'):'',
@@ -3517,7 +3662,7 @@ async function autoBalance(only,pre){
   try{
     const L={};for(const i of ids){delete cells[i].lvl;L[i]=await levelOf(i)}
     const vb=ids.map(i=>cells[i].vol);
-    const VMIN=.05,VMAX=2,cv=v=>+(Math.max(VMIN,Math.min(VMAX,v))).toFixed(2),   /* was x0.25 .. x2 in steps of 0.05; an orchestra needs more room downwards (a trumpet played loudly stayed 9 dB above the others) */
+    const VMIN=.05,VMAX=2,cv=v=>+(Math.max(VMIN,Math.min(VMAX,v))).toFixed(2),   /* R7.33: was x0.25 .. x2 in steps of 0.05; an orchestra needs more room downwards (a trumpet played loudly stayed 9 dB above the others) */
       med=a=>{a=a.filter(x=>x>0).sort((x,y)=>x-y);return a.length?a[a.length>>1]:0},
       one=typeof only==='number'&&cells[only];let t,lim=null;
     if(one){
@@ -3556,14 +3701,14 @@ async function exportMix(onlyAudio,fmt){
   if(busy||recording)return;busy=true;expHid=false;xCancelled=false;msg(LL('匯出中，需要等全部播放一次…','Exporting - the whole mix has to play through once…'));
   $('#out').innerHTML='';$('#eprog').hidden=false;$('#efill').style.width='0';$('#etxt').textContent=LL('準備匯出…','Preparing export…');
   const [W,H]=expDims(R,$('#xq').value),GM=geom();
-  const cv=document.createElement('canvas');cv.width=W;cv.height=H;const g=cv.getContext('2d');g.imageSmoothingEnabled=true;g.imageSmoothingQuality='high';   /* cells are scaled down; default 'low' aliased */
+  const cv=document.createElement('canvas');cv.width=W;cv.height=H;const g=cv.getContext('2d');g.imageSmoothingEnabled=true;g.imageSmoothingQuality='high';   /* R7.5: cells are scaled down; default 'low' aliased */
   const x=new(window.AudioContext||window.webkitAudioContext)(),dest=x.createMediaStreamDestination();
-  /* this wait came before the Cancel button existed, so a context that never resumed locked the page with nothing to press. At most 3 s, then say so. */
+  /* R7.22: this wait came before the Cancel button existed, so a context that never resumed locked the page with nothing to press. At most 3 s, then say so. */
   try{await Promise.race([x.resume(),new Promise(r=>setTimeout(r,3000))])}catch(e){}
   if(x.state!=='running'){try{x.close()}catch(e){}$('#eprog').hidden=true;busy=false;ui();msg(LL('音訊引擎沒有啟動，無法匯出影片。請改匯出 WAV，或重新整理頁面後再試。','The audio engine did not start, so the video cannot be exported. Export WAV instead, or reload the page and try again.'),'err');return}
   const bus=makeBus(x,dest);bus.set();const em=effMap(list);bus.setN(list.length);
   const vs={},bufs={},pjob={cancelled:false,abort:null,onProg:null,onStage:null};
-  /* Cancel and a real percentage during the preparation (the offline mix render), which used to be a silent 'Preparing export...' with no way out. */
+  /* R7.16: Cancel and a real percentage during the preparation (the offline mix render), which used to be a silent 'Preparing export...' with no way out. */
   const prepCancel=()=>{try{x.close()}catch(e){}$('#ecancel').hidden=true;window.__xStop=null;$('#eprog').hidden=true;$('#out').innerHTML='';busy=false;ui();msg(LL('已取消匯出。','Export cancelled.'))};
   let wake=null;const woke=new Promise(r=>{wake=r});   /* resolves on Cancel so the per-cell loading below does not have to finish first */
   window.__xStop=()=>{pjob.cancelled=true;if(pjob.abort)pjob.abort();wake()};
@@ -3574,7 +3719,7 @@ async function exportMix(onlyAudio,fmt){
     const v=document.createElement('video');v.src=cells[i].url;v.playsInline=true;
     await Promise.race([new Promise(r=>{v.onloadedmetadata=r;v.onerror=r;v.load()}),woke]);if(pjob.cancelled)break;
     v.muted=true;v.preload='auto';vs[i]=v;await Promise.race([prepVid(v),woke]);if(pjob.cancelled)break;
-    /* reuse the buffer Mix/Record already decoded (bufOf caches it on the cell) instead of decoding every cell a second time here, which doubled the audio memory
+    /* R7.14: reuse the buffer Mix/Record already decoded (bufOf caches it on the cell) instead of decoding every cell a second time here, which doubled the audio memory
        during a video export. A buffer is not tied to a context, and a different sample rate is resampled on playback, so this context can use it. */
     bufs[i]=await bufOf(i);
     if(!bufs[i]){v.muted=false;wire(v,x,bus).gain.value=mixGain(i)}
@@ -3602,11 +3747,11 @@ async function exportMix(onlyAudio,fmt){
   m.ondataavailable=e=>e.data.size&&out.push(e.data);
   const nameOn=!onlyAudio&&$('#xlab').value!=='off',NM=cellLabels.map(x=>(x||'').trim());
   let lastD=0,fN=0,fT0=0,fT1=0;
-  /* start at 'high'; if painting is too slow, step down to 'medium' then 'low' (never back up). Slow = the paint itself takes > 26 ms on average (a frame is due every 28 ms, so beyond this frames start to be skipped). Only the paint time is used, and a step down is kept only if it cuts that time by at least 15% (otherwise it is undone and adapting stops): frames can also arrive late because of video decoding, which scaling quality does not change. */
-  /* never below 'medium'. Measured against an exact area-average downscale: 'medium' is as good as 'high' (same PSNR/SSIM), while 'low' lost 6-9 dB PSNR and added 36-55% edge energy (aliasing, shimmering text and lines) at 2-3x reductions. */
+  /* R7.14: start at 'high'; if painting is too slow, step down to 'medium' then 'low' (never back up). Slow = the paint itself takes > 26 ms on average (a frame is due every 28 ms, so beyond this frames start to be skipped). Only the paint time is used, and a step down is kept only if it cuts that time by at least 15% (otherwise it is undone and adapting stops): frames can also arrive late because of video decoding, which scaling quality does not change. */
+  /* R7.21: never below 'medium'. Measured against an exact area-average downscale: 'medium' is as good as 'high' (same PSNR/SSIM), while 'low' lost 6-9 dB PSNR and added 36-55% edge energy (aliasing, shimmering text and lines) at 2-3x reductions. */
   const SQ=['low','medium','high'];let sq=2,sqN=0,sqCost=0,sqTry=null,sqLock=false;qDown=false;
   const draw=ts=>{
-    raf=requestAnimationFrame(draw);if(ts&&ts-lastD<28)return;lastD=ts||0;const pn=performance.now();{if(!fN)fT0=pn;fT1=pn;fN++}   /* count frames actually painted, to report a slow export */
+    raf=requestAnimationFrame(draw);if(ts&&ts-lastD<28)return;lastD=ts||0;const pn=performance.now();{if(!fN)fT0=pn;fT1=pn;fN++}   /* R7.9: count frames actually painted, to report a slow export */
     g.fillStyle=bdC;g.fillRect(0,0,W,H);
     const p=bdW/100*W,cw=(W-2*p-(GM.C-1)*p)/GM.C,ch=(H-2*p-(GM.R-1)*p)/GM.R;
     for(let i=0;i<N;i++){const v=vs[i];if(!v||!v.videoWidth)continue;
@@ -3642,7 +3787,7 @@ async function exportMix(onlyAudio,fmt){
     $('#etxt').textContent=total>1?LL('匯出中 '+Math.round(p*100)+'%，約剩 '+Math.max(0,Math.ceil(total-e))+' 秒。請保持畫面開啟。','Exporting '+Math.round(p*100)+'%, about '+Math.max(0,Math.ceil(total-e))+' s left. Keep this screen open.'):LL('匯出中…請保持畫面開啟。','Exporting… keep this screen open.')},250);
   {const cb=$('#ecancel');cb.textContent=LL('取消匯出','Cancel export');cb.hidden=false}
   window.__xStop=()=>{xCancelled=true;try{if(m.state!=='inactive')m.stop()}catch(e){}Object.values(vs).forEach(v=>{try{v.pause()}catch(e){}})};
-  try{m.start(sliceFor(m))}catch(e){   /* found by random fault injection; the page used to stay locked on 'exporting' (busy) with a Cancel button that did nothing */
+  try{m.start(sliceFor(m))}catch(e){   /* R7.24: found by random fault injection; the page used to stay locked on 'exporting' (busy) with a Cancel button that did nothing */
     clearInterval(pt);clearInterval(syT);cancelAnimationFrame(raf);try{x.close()}catch(e2){}try{wl&&wl.release()}catch(e2){}Object.values(vs).forEach(v=>{try{v.pause()}catch(e2){}});
     $('#ecancel').hidden=true;window.__xStop=null;$('#eprog').hidden=true;$('#out').innerHTML='';busy=false;ui();
     msg(LL('這個瀏覽器無法開始匯出影片（錄製器無法啟動）。請改匯出 WAV 或 M4A 音訊，或換用 Chrome／Safari 再試。','This browser could not start the video export (the recorder would not start). Export WAV or M4A audio instead, or try Chrome or Safari.'),'err');return}
@@ -3715,7 +3860,7 @@ function initModule(name,fn){
   catch(error){}
 }
 /* v2.0 Musician Ready Check: observational layer only. */
-/* the 'Ready check' card (Setup > top) is gone. It only ever said 'Ready to record' (browser can record, 50 MB free), its Level test judged the same sound differently from the
+/* R7.23: the 'Ready check' card (Setup > top) is gone. It only ever said 'Ready to record' (browser can record, 50 MB free), its Level test judged the same sound differently from the
    Record page (it called a -0.5 dB peak 'OK', Record says it will clip) and it polled storage and the audio devices every 2 s for nothing. What was useful is kept elsewhere:
    - 'this browser cannot record' is now a warning at the top of every page, shown only when it is true;
    - 'storage low' joined the existing storage warning (showStorage);
@@ -3762,7 +3907,7 @@ $('#adev').onchange=async e=>{if(recording||busy||counting){e.target.value=micId
 if(navigator.mediaDevices&&navigator.mediaDevices.addEventListener)navigator.mediaDevices.addEventListener('devicechange',()=>{listMics();latDevCheck()});
 setTimeout(latDevCheck,1500);setTimeout(latSilent,2500);
 {const pb=$('#adjpb'),fx=$('#adjfx'),pn=$('#adjpbn'),fn=$('#adjfxn'),cl300=v=>Math.max(-300,Math.min(300,Math.round(+v||0))),
- show=()=>{pb.value=adjPb;fx.value=adjFx;if(document.activeElement!==pn)pn.value=adjPb;if(document.activeElement!==fn)fn.value=adjFx};   /* the slider moves in 5 ms steps, the number boxes in 1 ms; both show the same value */
+ show=()=>{pb.value=adjPb;fx.value=adjFx;if(document.activeElement!==pn)pn.value=adjPb;if(document.activeElement!==fn)fn.value=adjFx};   /* R7.27: the slider moves in 5 ms steps, the number boxes in 1 ms; both show the same value */
  try{adjPb=cl300(localStorage.getItem('eg_adjpb'));adjFx=cl300(localStorage.getItem('eg_adjfx'))}catch(e){}
  show();
  const sv=()=>{try{localStorage.setItem('eg_adjpb',String(adjPb));localStorage.setItem('eg_adjfx',String(adjFx))}catch(e){}show()};
@@ -3924,7 +4069,7 @@ async function liveTest(){
     m.onstart=()=>{leadOn=(TS-c.currentTime)*1000};
     for(let k=0;k<4+NB;k++){const t=tc0+k*P;clickSnd(c,t,k%4==0?1600:1100,.07);cueAt(t,()=>flash(k%4==0))}
     out.textContent=LL('測試中：聽到 4 下預備拍後，跟著拍子機拍手 '+NB+' 下…','Testing: after the 4 count-in beats, clap along with the click '+NB+' times…');
-    /* the audio clock is what these loops wait for; if it stops, the check has no Cancel button, so a wall-clock limit ends it */
+    /* R7.22: the audio clock is what these loops wait for; if it stops, the check has no Cancel button, so a wall-clock limit ends it */
     const w0=performance.now(),wlim=(end-c.currentTime+8)*1000;
     while(c.currentTime<TS-leadS){if(performance.now()-w0>wlim)throw new Error('clock');await sleep(4)}
     if(gi.length)playOthers(idx,0,TS,true,gi);
@@ -3963,7 +4108,7 @@ async function quickCal(){
     msg(LL('已自動調整，再確認一次：同樣跟著拍子機拍手 8 下。','Adjusted automatically. Once more to confirm: clap with the click 8 times again.'));
     const r2=await liveTest();if(!r2)return;
     if(Math.abs(r2.d)<=12)qcOk(LL('✓ 校準完成，可以開始錄。','✓ Calibration done. Ready to record.'));
-    else if(Math.abs(r2.d)>40){   /* it used to say 'close enough' whatever the result (measured: 450 ms and 600 ms delays ended with a compensation of 0 and this message) */
+    else if(Math.abs(r2.d)>40){   /* R7.24: it used to say 'close enough' whatever the result (measured: 450 ms and 600 ms delays ended with a compensation of 0 and this message) */
       msg(LL('⚠ 兩次量度後仍相差 '+Math.abs(r2.d)+' ms，未能校準好，沒有再調整。用藍牙耳機延遲大時，請到「更多設定」→「進階」先按「開始校準」（自動量度），再做一次耳機同步；或改用有線耳機。','⚠ Still '+Math.abs(r2.d)+' ms off after two tries, so it was not adjusted further. With a Bluetooth headset that has a large delay, open More settings > Advanced and run Start calibration (automatic measure) first, then check headphone sync again; or use wired headphones.'),'err')}
     else{applyLatFix(r2.d);qcOk(LL('已校準到大致準確。如果錄音時仍覺得有些前後，可以按「進階」裡的「錄音同步微調」。','Close enough. If it still feels slightly off while recording, use Recording sync adjustment in Advanced.'))}
   }finally{qcBusy=false}}
@@ -4008,7 +4153,7 @@ async function tailFrames(blob,dur){
 }
 let xTok=0;
 /* after an export: say so when the picture stops early (the audio is usually still fine, so the file stays downloadable) */
-/* length and picture size of the exported file as the browser reports them (null when it cannot tell, e.g. a WebM without a duration header). */
+/* R7.20/R7.21: length and picture size of the exported file as the browser reports them (null when it cannot tell, e.g. a WebM without a duration header). */
 async function vidDuration(blob){
   let v=null,url='';
   const wait=(ev,ms)=>new Promise(r=>{let d=0;const f=()=>{if(!d){d=1;v.removeEventListener(ev,f);r(true)}};v.addEventListener(ev,f);setTimeout(()=>{if(!d){d=1;v.removeEventListener(ev,f);r(false)}},ms)});
@@ -4024,20 +4169,20 @@ async function vidDuration(blob){
    that cannot keep up the picture falls behind and the video file ends up LONGER than the sound (measured: 4 cells at 1080p, the picture 6.6 s late at the 18 s mark while the old
    check still said 'video checked'). More than 5% (and at least 1 s) longer than the mix means the picture is late. */
 const lagCheck=(videoDur,mixDur)=>videoDur!=null&&mixDur>0&&videoDur>mixDur+Math.max(1,mixDur*.05);
-const sizeOff=(w,h,W,H)=>!!(w&&h&&W&&H&&(Math.abs(w-W)>2||Math.abs(h-H)>2));   /* the file must have the size the card promised */
-/* a device that could not keep up once starts at the lighter quality next time (it can still be raised by hand). */
+const sizeOff=(w,h,W,H)=>!!(w&&h&&W&&H&&(Math.abs(w-W)>2||Math.abs(h-H)>2));   /* R7.21: the file must have the size the card promised */
+/* R7.21: a device that could not keep up once starts at the lighter quality next time (it can still be raised by hand). */
 const slowMark=()=>{try{localStorage.setItem('eg_xqslow','1')}catch(e){}};
 function qTip(){const q=$('#xq').value;return q==='fhd'?LL('請改用「高畫質」再匯出','switch to High and export again'):q==='hi'?LL('請改用「標準」再匯出','switch to Standard and export again'):LL('請減少格數，或先關閉其他 App 再匯出','reduce the number of cells or close other apps, then export again')}
 function verifyExport(blob,endT,baseTxt,mixDur,want){
   const tok=++xTok,e=$('#etxt');
   if(e)e.textContent=baseTxt+LL('　檢查影像中…','  Checking the video…');
-  Promise.race([vidDuration(blob).then(vi=>tailFrames(blob,endT).then(ok=>[ok,vi])),new Promise(r=>setTimeout(()=>r([null,null]),25000))]).then(([ok,vi])=>{   /* 25 s limit */
+  Promise.race([vidDuration(blob).then(vi=>tailFrames(blob,endT).then(ok=>[ok,vi])),new Promise(r=>setTimeout(()=>r([null,null]),25000))]).then(([ok,vi])=>{   /* R7.22: 25 s limit */
     if(tok!==xTok||!e)return;
     const vd=vi&&vi.dur,late=lagCheck(vd,mixDur||endT);
     if(vi&&want&&sizeOff(vi.w,vi.h,want.W,want.H)){
       e.textContent=baseTxt+LL('　⚠ 檔案的畫面大小是 '+vi.w+'×'+vi.h+'，與預期的 '+want.W+'×'+want.H+' 不同。','  ⚠ The file is '+vi.w+'×'+vi.h+', not the expected '+want.W+'×'+want.H+'.')}
     if(late){const sec=n=>n.toFixed(1),tip=qTip(),xq0=$('#xq'),sw=!!xq0&&(xq0.value==='hi'||xq0.value==='fhd');slowMark();
-      /* High is the default now, so a device that cannot keep up is moved to Standard straight away instead of only being told to do it. */
+      /* R7.21: High is the default now, so a device that cannot keep up is moved to Standard straight away instead of only being told to do it. */
       if(sw){xq0.value='std';xq0.dispatchEvent(new Event('change'));try{xUpdate()}catch(e){}}
       const adv=sw?LL('已自動改為「標準」畫質，請再按一次匯出。','Quality was switched to Standard for you; export again.'):tip.charAt(0).toUpperCase()+tip.slice(1)+'.';
       e.textContent=baseTxt+LL('　⚠ 影片長度（'+sec(vd)+' 秒）比聲音（約 '+sec(mixDur||endT)+' 秒）長，畫面可能比聲音慢。'+(sw?'已自動改為「標準」畫質，請再按一次匯出。':tip+'。'),'  ⚠ The video ('+sec(vd)+' s) is longer than the sound (about '+sec(mixDur||endT)+' s), so the picture may run behind the sound. '+adv);
@@ -4063,7 +4208,7 @@ function wavBlob(ab,bits=16){const n=ab.length,ch=ab.numberOfChannels,sr=ab.samp
   else for(let i=0;i<n;i++)for(let k=0;k<ch;k++){let x=Math.round(d[k][i]*32767+(Math.random()-Math.random()));v.setInt16(o,x>32767?32767:x<-32768?-32768:x,true);o+=2}
   return new Blob([buf],{type:'audio/wav'})}
 /* 5-8-8：離線渲染混音（sample-accurate），匯出前正規化到 -1 dBFS（最多提升 12 dB） */
-/* renderMix can report progress and be cancelled. job = {onProg(frac), onStage(name), cancelled, abort}. Progress comes from OfflineAudioContext.suspend(): rendering is paused
+/* R7.16: renderMix can report progress and be cancelled. job = {onProg(frac), onStage(name), cancelled, abort}. Progress comes from OfflineAudioContext.suspend(): rendering is paused
    at evenly spaced times, the bar is updated, then it is resumed. Measured: no extra render time (9 cells x 60 s with reverb 6.33 s plain vs 6.34 s with 12 pauses) and the same
    samples (largest difference 2e-7, float rounding). A browser without suspend() just renders in one go (no percentage), and Cancel then abandons the result instead. */
 async function renderMix(ids,bufs,em,sr,job){
@@ -4133,7 +4278,7 @@ function xSupport(){const T=window.MediaRecorder&&MediaRecorder.isTypeSupported?
     m4a:T('audio/mp4;codecs=mp4a.40.2')||T('audio/mp4'),weba:T('audio/webm;codecs=opus')||T('audio/webm')}}
 let xUpdate=()=>{};
 const xFmtT=t=>Math.floor(t/60)+':'+String(Math.floor(t%60)).padStart(2,'0');
-/* the camera picture size actually in the cells, and how much the chosen export quality enlarges it. Enlarging adds pixels but no detail. */
+/* R7.21: the camera picture size actually in the cells, and how much the chosen export quality enlarges it. Enlarging adds pixels but no detail. */
 function srcDims(){const v=stage.querySelector('video:not(.lv)');return v&&v.videoWidth?[v.videoWidth,v.videoHeight]:null}
 function qScale(q){const d=srcDims();if(!d)return null;const [W,H]=expDims(R,q),GM=geom(),p=bdW/100*W,cw=(W-2*p-(GM.C-1)*p)/GM.C,ch=(H-2*p-(GM.R-1)*p)/GM.R;let m=0;
   GM.rc.forEach(r=>{const bw=cw*r[2]+(r[2]-1)*p,bh=ch*r[3]+(r[3]-1)*p;m=Math.max(m,Math.max(bw/d[0],bh/d[1]))});return m}
@@ -4169,11 +4314,11 @@ function xInit(){
     $('#xqrow').hidden=!vid;$('#xqLab').textContent=LL('畫質','Quality');
     const qb=$('#xqCards');qb.innerHTML='';
     {const all=[['lo',LL('省空間','Small')],['std',LL('標準','Standard')],['hi',LL('高畫質','High')],['fhd','1080p']],
-      hideF=dims('fhd')===dims('hi'),   /* 1:1 already reaches 1080 px at High, so a 1080p chip would look identical */
+      hideF=dims('fhd')===dims('hi'),   /* R7.11: 1:1 already reaches 1080 px at High, so a 1080p chip would look identical */
       qSel=(q==='fhd'&&hideF)?'hi':q;
     all.forEach(([v,lab])=>{if(v==='fhd'&&hideF)return;
       const dup=all.some(([w])=>w!==v&&!(w==='fhd'&&hideF)&&dims(w)===dims(v));   /* same pixel size as another chip: show the bitrate so they can be told apart */
-      const grp=all.filter(([w])=>!(w==='fhd'&&hideF)&&dims(w)===dims(v)).map(([w])=>BR[w]),   /* same pixel size -> say in words which one is smaller / has more detail (the Mbps stays in the tooltip) */
+      const grp=all.filter(([w])=>!(w==='fhd'&&hideF)&&dims(w)===dims(v)).map(([w])=>BR[w]),   /* R1.0b: same pixel size -> say in words which one is smaller / has more detail (the Mbps stays in the tooltip) */
         word=!dup?'':BR[v]===Math.min(...grp)?LL('檔案最細','Smallest file'):BR[v]===Math.max(...grp)?LL('細節較多','More detail'):(BR[v]/1e6)+' Mbps';
       const bt=mk('button',qSel===v?'on':'','<b>'+lab+'</b><small>'+dims(v)+'</small>'+(dup?'<small>'+word+'</small>':'')+(n?'<small>≈'+mb(est(f,v,d))+'</small>':''),()=>{xq.value=v;fire(xq);upd()});
       bt.title=lab+' · '+dims(v)+' · '+(BR[v]/1e6)+' Mbps';qb.appendChild(bt)});
@@ -4208,11 +4353,11 @@ function xInit(){
       +(/^(webm|weba)$/.test(f)?LL('　部分 iPhone 無法播放此格式。','  Some iPhones cannot play this format.'):'')+(vid?LL('　影片內的聲音會再壓縮一次；要最佳音質請另外匯出 WAV。','  The sound inside a video is compressed a second time; for the best audio quality also export WAV.'):'')+(vid?upScaleTxt(q):''));
     /* 主掣 */
     $('#expT').textContent=n?LL('匯出 '+FT[f]+(vid?'':' 音訊')+' · ≈'+mb(est(f,q,d)),'Export '+FT[f]+(vid?'':' audio')+' · ≈'+mb(est(f,q,d))):LL('開始匯出','Start export');
-    {const w=$('#expWait'),need=!!n&&f!=='wav';   /* this used to be a grey sentence inside the format card, far from the button */
+    {const w=$('#expWait'),need=!!n&&f!=='wav';   /* R7.25: this used to be a grey sentence inside the format card, far from the button */
       if(w){w.hidden=!need;w.textContent=need?LL('需要即時播放一遍（約 '+xFmtT(d)+'），期間請留在這個畫面，不要切換 App 或鎖定螢幕。','It plays through once in real time (about '+xFmtT(d)+'). Stay on this screen; do not switch apps or lock the screen.'):''}}
   };
   $('#ecancel').onclick=()=>{if(window.__xStop)return window.__xStop()};
-  /* High is the default (Standard is only 540 px wide in 9:16). The bit rate was never the limit (0.26 bit per pixel, above YouTube's own 1080p and 720p advice), the picture size was. A device that once could not keep up falls back to Standard. */
+  /* R7.21: High is the default (Standard is only 540 px wide in 9:16). The bit rate was never the limit (0.26 bit per pixel, above YouTube's own 1080p and 720p advice), the picture size was. A device that once could not keep up falls back to Standard. */
   try{if(xq&&localStorage.getItem('eg_xqslow')!=='1')xq.value='hi'}catch(e){}
   xUpdate=upd;upd()}
 xInit();
@@ -4401,7 +4546,7 @@ async function loudNorm(ab){
   let pk=0;for(let k=0;k<ab.numberOfChannels;k++){const d=ab.getChannelData(k);for(let i=0;i<d.length;i++){const a=d[i]<0?-d[i]:d[i];if(a>pk)pk=a}}
   if(pk<1e-4)return;
   const CEIL=Math.pow(10,-1/20),tp=await truePeak(ab,pk);   /* ceiling: -1 dBTP (true peak), the figure streaming services ask for */
-  /* three modes. 'lufs' (publish: about -14 LUFS, peak ceiling -1 dBTP) and 'peak' (loudest safe: highest peak to -1 dBTP) behave exactly as before. 'none' keeps the level
+  /* R7.19: three modes. 'lufs' (publish: about -14 LUFS, peak ceiling -1 dBTP) and 'peak' (loudest safe: highest peak to -1 dBTP) behave exactly as before. 'none' keeps the level
      of the mix as it was heard: gain 1, and the only change allowed is turning it DOWN when the true peak would pass -0.1 dBTP (otherwise the file would clip). The LUFS of the
      result is now measured in every mode so the export card can say how loud the file really is. */
   let L=null,g=mode==='none'?Math.min(1,Math.pow(10,-.1/20)/tp):Math.min(4,CEIL/tp);
@@ -4411,17 +4556,17 @@ async function loudNorm(ab){
   else g=1;
   _loud={mode,gain:20*Math.log10(g),after:L==null||!isFinite(L)?null:L+20*Math.log10(g),tp:20*Math.log10(tp*g)}}
 function loudTxt(){if(!_loud)return '';const a=_loud.after,t=_loud.tp,gd=_loud.gain,ag=Math.abs(gd);
-  /* say in plain words what was done to the volume, then give the numbers. */
+  /* R7.19: say in plain words what was done to the volume, then give the numbers. */
   const g=ag<.1?LL(' · 音量沒有調整',' · level unchanged'):gd>0?LL(' · 整體提高了 '+ag.toFixed(1)+' dB',' · raised by '+ag.toFixed(1)+' dB'):LL(' · 整體降低了 '+ag.toFixed(1)+' dB',' · lowered by '+ag.toFixed(1)+' dB');
   return g+(a!=null?' · '+a.toFixed(1)+' LUFS'+(_loud.mode==='lufs'&&a<-14.6?(gd>15.4?LL('（已提高到上限，仍未到 −14）',' (boosted as far as allowed, still below −14)'):LL('（受峰值上限限制）',' (peak-limited)')):''):'')+(t!=null?' · '+LL('真峰值 ','TP ')+t.toFixed(1)+' dB':'')}
-/* how fast the export actually painted. The loop aims at ~30 fps (every 28 ms or more); a phone that cannot keep up paints fewer frames and the video stutters.
+/* R7.9: how fast the export actually painted. The loop aims at ~30 fps (every 28 ms or more); a phone that cannot keep up paints fewer frames and the video stutters.
    Reported only on evidence: at least 2 s of frames and an average below 24 fps. Not judged when the page was hidden (that has its own warning). */
 function slowTxt(n,ms){
   if(!(n>=60)||!(ms>0))return '';
   const fps=(n-1)/(ms/1000);if(fps>=24)return '';
   const tip=qTip();slowMark();
   return LL('　⚠ 匯出時平均只有 '+Math.round(fps)+' fps（目標約 30），影片可能有停頓。'+tip+'。','　⚠ The export averaged only '+Math.round(fps)+' fps (target about 30), so the video may stutter. '+tip.charAt(0).toUpperCase()+tip.slice(1)+'.')}
-let expHid=false,qDown=false;   /* qDown: the export lowered its scaling quality */
+let expHid=false,qDown=false;   /* qDown: R7.14, the export lowered its scaling quality */
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&busy)expHid=true});
 Object.assign(EN,{'匯入影片或音檔後會自動對齊其他格（可在「準備」關掉「錄後自動對齊」）':'Imported video or audio is lined up with the other cells automatically (switch off "Align after recording" in Setup to skip)','格名標籤':'Cell name labels','位元深度':'Bit depth','試音':'Level check','響度':'Loudness','串流':'Streaming','峰值':'Peak','發佈用（約 −14 LUFS）':'For posting (about −14 LUFS)','保持原音量':'Keep level','最大音量（峰值 −1 dB）':'Max level (peak −1 dB)','匯出響度':'Export loudness','備份':'Back up'});
 /* 5-9-73：準備頁備份提醒（有錄音而未備份／有新變更時顯示） */
@@ -4446,7 +4591,7 @@ async function spaceFree(){try{if(!(navigator.storage&&navigator.storage.estimat
 const spaceMins=(free,got,rate,k)=>Math.max(0,(free-got-SPACE_MARGIN)/(k*rate)/60);
 const spaceMsg=m=>LL('⚠ 儲存空間只剩'+(m<1?'不到 1':'約 '+Math.floor(m))+' 分鐘可錄。快滿時會自動停止並保留已錄內容；建議先匯出備份並刪除不需要的專案。','⚠ '+(m<1?'Less than 1':'Only about '+Math.floor(m))+' min of recording space left. Recording stops automatically when it runs out and keeps what is recorded; export a backup and delete projects you do not need first.');
 async function spaceStart(RD){const free=await spaceFree();if(free==null||!recording)return;const m=spaceMins(free,0,recRate(),RD?2:1);if(m<5)msg(spaceMsg(m),'err')}
-/* (F-03): crash recovery used to offer whatever the draft store held. With an MP4 recorder that is often only the container header (about 1 KB, no sound), yet the prompt said "recovered" and
+/* R7.29 (F-03): crash recovery used to offer whatever the draft store held. With an MP4 recorder that is often only the container header (about 1 KB, no sound), yet the prompt said "recovered" and
    accepting it REPLACED a good recording in that cell. Now: (1) a draft with nothing usable (under 20 KB, or a decoded length under 1 s) is dropped with a plain message; (2) the prompt gives the length in
    seconds when it can be decoded; (3) when the cell the draft came from already holds a recording and there is an empty cell, the draft goes into the empty cell, so a recovery never overwrites an
    existing take unless there is no free cell (the prompt then says so). Drafts under 15 s old are still left alone (another tab may be recording). */
@@ -4516,7 +4661,7 @@ Object.assign(EN,{'拍':'Beat',
 '所有專案：複製、匯出、匯入':'All projects: duplicate, export, import',
 '速度':'Tempo',
 '混音工具':'Mix tools'});
-Object.assign(EN,{'瞳 · 版本 1.0 正式版':'Hitomi · Version 1.0 (release)'});
+Object.assign(EN,{'瞳 · 版本 1.0':'Hitomi · Version 1.0'});
 Object.assign(EN,{'重設校準':'Reset calibration','快速鍵':'Keyboard shortcuts','已錄的格聲音（毫秒）':'Recorded cells sound (ms)','畫面閃動與倒數數字（毫秒）':'Screen flash and count-in numbers (ms)',
 '首次要先允許麥克風權限，名稱才會顯示。選擇不會保存，重新整理後回到系統預設。部分 Android 手機（如 Samsung）接上 USB-C 耳機後，系統會強制用耳機麥克風，選了手機麥克風也無效；iPad Safari 則照你的選擇。':'Allow microphone permission once so the names show. The choice is not saved; after a reload it returns to the system default. On some Android phones (such as Samsung) the system forces the headset microphone once a USB-C headset is plugged in, so choosing the phone microphone has no effect; iPad Safari follows your choice.',
 '部分瀏覽器用 MP4 錄音時不會保存草稿；想確保有草稿，請把「錄製編碼」改為 WebM (VP8)。':'In some browsers MP4 recording does not save a draft; to be sure drafts are saved, set Recording codec to WebM (VP8).',
@@ -4552,7 +4697,7 @@ function refreshLang(){
   [...stage.children].forEach((d,i)=>{const t=d.querySelector('.tag');if(t)t.textContent=tagTxt(i,recording&&i===cur)});
   applyTheme();setupChips();
   if(ready)renderProjUI();else $('#pcur').textContent=LL('載入中…','Loading…')+' ▾';
-  ui();resumeUI();warnShow();showStorage();xUpdate();try{renderReferencePanel()}catch(e){}   /* its label stayed in the old language until the next stage redraw */
+  ui();resumeUI();warnShow();showStorage();xUpdate();try{renderReferencePanel()}catch(e){}   /* R7.24: its label stayed in the old language until the next stage redraw */
   if(!busy)$('#calres').textContent=calIdle();
   if(alignRep)showAlignRep();
   if(document.body.dataset.tab==='mix')renderTracks();
@@ -4626,10 +4771,10 @@ $('#mchk').onclick=async e=>{e.stopPropagation();
   }finally{chkOn=0;bt.disabled=false}};
 
 
-const QUIET_DB=-24;   /* take peak at or below this = too quiet (the Record meter's 'OK' zone starts at -18 dB) */
+const QUIET_DB=-24;   /* R7.7: take peak at or below this = too quiet (the Record meter's 'OK' zone starts at -18 dB) */
 function takeQualityLine(cls,text){return '<span class="'+cls+'">'+text+'</span>'}
-const LATE_MS=-30;   /* */
-/* what the browser says the camera and microphone are really doing (it may ignore what was asked for). */
+const LATE_MS=-30;   /* R7.20 */
+/* R7.21: what the browser says the camera and microphone are really doing (it may ignore what was asked for). */
 function captureInfo(){try{const vt=stream&&stream.getVideoTracks&&stream.getVideoTracks()[0],at=stream&&stream.getAudioTracks&&stream.getAudioTracks()[0],
   v=vt&&vt.getSettings?vt.getSettings():null,a=at&&at.getSettings?at.getSettings():null,q=CQ[camQ]||CQ.std;
   return{vid:!audioOnly&&!!v,vw:(v&&v.width)||0,vh:(v&&v.height)||0,fps:(v&&v.frameRate)||0,ask:Math.min(q[0],q[1]),ag:!!(a&&a.autoGainControl===true),ec:!!(a&&a.echoCancellation===true),ns:!!(a&&a.noiseSuppression===true),asr:(a&&a.sampleRate)||0}}catch(e){return null}}
@@ -4642,11 +4787,11 @@ function qiWarn(c){const q=c&&c.qi,v=[],a=[];if(!q)return [];
   const j=LL('；','; ');   /* one line for the picture and one for the sound, so the 3-line take bar never hides a sound problem */
   return [v.join(j),a.join(j)].filter(Boolean).map(t=>t.charAt(0).toUpperCase()+t.slice(1))}
 function takeQualitySync(c){const r=Math.abs(Number(c&&c.residual)||0);return r<GF_MAX?['ok',LL('✓ 對齊正常','✓ Alignment looks normal')]:['warn',LL('⚠ 建議聽一次，確認對齊','⚠ Listen once for alignment')]}
-function renderTakeQuality(i){const q=$('#takeQuality'),c=cells[i];if(!q||!c)return;q.innerHTML='';const v=stage.children[i]?.querySelector('video');const finish=(d,dec)=>{if(cells[i]!==c)return;const dur=(dec!=null&&isFinite(dec))?dec:(isFinite(d)&&d>0?d:null),exp=(typeof c.recSec==='number'&&c.recSec>0)?c.recSec:null,miss=(dur!=null&&exp!=null&&dur<exp*.9&&exp-dur>=1);const rows=[];   /* dur = what the browser can really decode (WebM reports Infinity, which used to read as 0 s); null = cannot tell, then no judgement. miss = F-16: clearly less sound than the recorder ran */{const pk=(typeof c.pk==='number'&&isFinite(c.pk))?Math.round(c.pk):null,quiet=!c.clip&&pk!=null&&pk<=QUIET_DB;
+function renderTakeQuality(i){const q=$('#takeQuality'),c=cells[i];if(!q||!c)return;q.innerHTML='';const v=stage.children[i]?.querySelector('video');const finish=(d,dec)=>{if(cells[i]!==c)return;const dur=(dec!=null&&isFinite(dec))?dec:(isFinite(d)&&d>0?d:null),exp=(typeof c.recSec==='number'&&c.recSec>0)?c.recSec:null,miss=(dur!=null&&exp!=null&&dur<exp*.9&&exp-dur>=1);const rows=[];   /* R7.31: dur = what the browser can really decode (WebM reports Infinity, which used to read as 0 s); null = cannot tell, then no judgement. miss = F-16: clearly less sound than the recorder ran */{const pk=(typeof c.pk==='number'&&isFinite(c.pk))?Math.round(c.pk):null,quiet=!c.clip&&pk!=null&&pk<=QUIET_DB;
       rows.push(takeQualityLine(c.clip?'bad':quiet?'warn':'ok',c.clip?LL('⚠ 聲音有削波，建議重聽','⚠ Clipping detected; listen again'):quiet?(pk<=-60?LL('⚠ 幾乎沒收到聲音，請檢查麥克風後重錄','⚠ Almost no sound was picked up; check the microphone and redo'):LL('⚠ 收音偏小聲（最高 '+pk+' dB），建議近一點再重錄','⚠ Quiet take (peak '+pk+' dB). Move closer and redo')):LL('✓ 收音正常','✓ Recording level looks normal')));}if(dur!=null){if(miss)rows.push(takeQualityLine('warn',LL('⚠ 只有約 '+Math.round(dur)+' 秒有聲音（錄了約 '+Math.round(exp)+' 秒），錄音可能不完整，建議重錄','⚠ Only about '+Math.round(dur)+' s of sound was captured out of about '+Math.round(exp)+' s recorded, so the take may be incomplete. Redo it')));else rows.push(takeQualityLine(dur>=1?'ok':'warn',dur>=1?LL('✓ 錄音完整 · ','✓ Recording available · ')+fmtT(dur):LL('⚠ 錄音似乎太短','⚠ Recording may be too short')))}const sy=takeQualitySync(c);rows.push(takeQualityLine(sy[0],sy[1]));
       {const ld=c.sync&&c.sync.lead;if(typeof ld==='number'&&ld<LATE_MS){const ms=ld<=-300?'300+':String(-ld);rows.push(takeQualityLine('bad',LL('⚠ 錄音機比第一拍晚了約 '+ms+' ms 才開始，開頭可能被切掉，建議重錄','⚠ The recorder started about '+ms+' ms after beat 1, so the start of the take may be cut off. Redo it')))}}
-      qiWarn(c).forEach(t=>rows.push(takeQualityLine('warn','⚠ '+t)));   /* */rows.push(takeQualityLine('ok',LL('✓ 由你決定保留或重錄','✓ You decide whether to keep or redo')));{const pk3=(typeof c.pk==='number'&&isFinite(c.pk))?Math.round(c.pk):null,ld3=c.sync&&c.sync.lead,
-    redo=!!c.clip||(pk3!=null&&pk3<=QUIET_DB)||miss||(dur!=null&&dur<1)||(typeof ld3==='number'&&ld3<LATE_MS);   /* only problems a redo can fix; camera frame rate and the alignment advice do not count */
+      qiWarn(c).forEach(t=>rows.push(takeQualityLine('warn','⚠ '+t)));   /* R7.21 */rows.push(takeQualityLine('ok',LL('✓ 由你決定保留或重錄','✓ You decide whether to keep or redo')));{const pk3=(typeof c.pk==='number'&&isFinite(c.pk))?Math.round(c.pk):null,ld3=c.sync&&c.sync.lead,
+    redo=!!c.clip||(pk3!=null&&pk3<=QUIET_DB)||miss||(dur!=null&&dur<1)||(typeof ld3==='number'&&ld3<LATE_MS);   /* R7.32: only problems a redo can fix; camera frame rate and the alignment advice do not count */
     const bt=$('#takebar');if(bt&&+bt.dataset.i===i){bt.classList.toggle('redoFirst',redo);if(redo){clearTimeout(takeT);takeT=setTimeout(hideTake,20000)}}}
   q.innerHTML=rows.join('')};bufOf(i).then(bf=>finish(v?v.duration:0,bf?bf.duration:null),()=>finish(v?v.duration:0,null))}
 function hideTake(){clearTimeout(takeT);$('#takebar').hidden=true}
@@ -4686,7 +4831,7 @@ addEventListener('pointerdown',e=>{
       if(nodes.length<=2)return;
       const bad=nodes.filter(n=>/bad|warn/.test(n.className));
       const ok=nodes.filter(n=>n.classList.contains('ok'));
-      /* it used to rewrite the list on every change it saw, so 3 or more warnings made it rewrite its own output for ever and the whole page hung (e.g. clipping + a 100 ms
+      /* R7.21: it used to rewrite the list on every change it saw, so 3 or more warnings made it rewrite its own output for ever and the whole page hung (e.g. clipping + a 100 ms
          alignment drift + a very short take). It now stops once only warnings are left, and shows at most the first 3. */
       if(bad.length&&bad.length===nodes.length&&bad.length<=3)return;
       if(bad.length){
@@ -4711,7 +4856,7 @@ addEventListener('pointerdown',e=>{
       else if(v>=-18)lv='ok';
       else lv='low';
       let T={wait:['等待聲音','No signal','Waiting for sound'],clip:['會爆，請退後','Will clip','Will clip - step back'],hot:['偏大，請退後一點','Too loud','Too loud - step back a little'],ok:['音量 OK','Level OK','Level OK'],low:['偏小聲，可再近一點','Too quiet','Too quiet - move slightly closer']}[lv];
-      if(lv==='clip'&&v<-1)T=[('曾爆音·點清除'),'Clipped · tap','Clipped earlier - tap the meter to clear'];   /* latched light only (the level is fine now): say so and how to clear it */
+      if(lv==='clip'&&v<-1)T=[('曾爆音·點清除'),'Clipped · tap','Clipped earlier - tap the meter to clear'];   /* R1.0b: latched light only (the level is fine now): say so and how to clear it */
       meter.setAttribute('data-lv',lv);
       meter.setAttribute('data-level',LL(T[0],T[1]));
       meter.title=LL(T[0],T[2])+LL(' · 點一下清除過載燈',' · tap to clear the clip light');
@@ -5064,7 +5209,7 @@ html body[data-tab]:not([data-tab="rec"]) header.top #recCompactTools{display:no
   html body[data-tab] header.top #pcur{min-height:36px!important;padding:4px 10px!important;font-size:.78rem!important}
   html body[data-tab] header.top #lang{min-height:36px!important;padding:3px 6px!important;max-width:8.5em!important}
 }
-/* */.frmP .grNote{grid-column:1/-1;margin:0}
+/* R7.6 */.frmP .grNote{grid-column:1/-1;margin:0}
 /* ===== hitomi-r2-media-import-css ===== */
 /* R2 Media Import b1: Import is a secondary media action on Record page. */
 body[data-tab="rec"] #impRow{display:block!important;margin:6px 0 8px!important}
@@ -5080,7 +5225,7 @@ body[data-tab="rec"] #impInfo{width:34px!important;height:34px!important;min-hei
 body[data-tab="rec"] #impTips{margin:6px 0 0!important;font-size:.76rem!important}
 </style>
 <style id="hitomi-r3-2-setup-density">
-/* Setup density: progressive disclosure only; no setup capability removed. */
+/* R3.2 Setup density: progressive disclosure only; no setup capability removed. */
 
 /* Part names and producer lock are advanced setup, collapsed by default via JS below. */
 
@@ -5159,7 +5304,7 @@ body[data-tab="rec"] #stage .cell .tagEdit{position:absolute;left:6px;top:6px;z-
 })();
 </script>
 <style id="hitomi-r4-0-css">
-/* producer lock retired; sync check entry restored on Setup. */
+/* R4.0: producer lock retired; sync check entry restored on Setup. */
 
 #calQuick{min-height:38px!important;padding:4px 12px!important;border-radius:12px;background:var(--bg);border:1px solid var(--bd);font-weight:800}
 /* English on phones: "Audio only" is wider than the half-width column the grid left it after the Loop selector was removed. */
@@ -5199,8 +5344,8 @@ body[data-tab=mix] #viewer .prog{display:none!important}
   try{bindEvent('calQuick','click',runSyncCheck)}catch(e){}
 })();
 </script>
-<style id="hitomi-v1-11-layout">
-/* take bar = compact 4-column grid (title + Keep + Redo / two play buttons / quality note); desktop Record preview leaves room for the floating tab bar. */
+<style id="hitomi-r7-11-layout">
+/* R7.11: take bar = compact 4-column grid (title + Keep + Redo / two play buttons / quality note); desktop Record preview leaves room for the floating tab bar. */
 html body[data-tab=rec] #takebar:not([hidden]){display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px!important;align-items:center;padding:8px 10px!important}
 html body[data-tab=rec] #takebar #tbt{grid-column:1/3;grid-row:1;min-width:0!important;flex:none!important;font-size:.86rem;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 html body[data-tab=rec] #takebar #tbk{grid-column:3;grid-row:1}
@@ -5217,8 +5362,8 @@ html body[data-tab=rec] #takebar #takeQuality span{display:block}
   html body[data-tab=rec].recing{--sv:max(320px,calc(100dvh - 300px))!important}
 }
 </style>
-<style id="hitomi-v1-12-mobile">
-/* phone-first clean-up (labels/layout only). */
+<style id="hitomi-r7-12-mobile">
+/* R7.12 phone-first clean-up (labels/layout only). */
 /* Setup > Tempo: four wheels line up whatever the label length. */
 .tempo4 .wheelLab{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;text-align:center;line-height:1.2;min-height:1.2em}
 /* Mix: reverb card folds on phones; the summary shows the current choice. */
@@ -5240,7 +5385,7 @@ html body[data-tab=rec] #takebar #takeQuality span{display:block}
 /* Record: the red 'too loud' banner repeated what the level meter already says. */
 #cliptxt{display:none!important}
 </style>
-<script id="hitomi-v1-12-js">
+<script id="hitomi-r7-12-js">
 (function(){
   /* Reverb card: folded on phones (it is a project-wide setting that is rarely changed, and it pushed the tracks below the fold), open on wide screens. */
   var card=document.querySelector('.rvCard'),head=document.getElementById('rvHead');if(!card||!head)return;
@@ -5249,8 +5394,8 @@ html body[data-tab=rec] #takebar #takeQuality span{display:block}
   head.addEventListener('click',function(){set(!card.classList.contains('col'))});
 })();
 </script>
-<style id="hitomi-v1-13-recording">
-/* Recording status layout (count-in + recording). Everything is scoped to body.recing, so idle Record / Setup / Mix / Export are untouched. */
+<style id="hitomi-r7-13-recording">
+/* R7.13 Recording status layout (count-in + recording). Everything is scoped to body.recing, so idle Record / Setup / Mix / Export are untouched. */
 /* 1. Rows that cannot be used while recording are hidden (DOM kept): reference list, the plain status sentence (the red button, the cell tag and the readout already say it),
       Level check. Warnings and errors (msg.hi / .ok / .err, e.g. low storage) still show. */
 html body[data-tab=rec].recing #refPanel,
@@ -5293,10 +5438,10 @@ html[lang^=zh] body.recing #rst[hidden]::after{content:"準備中…"}
   html body[data-tab=rec].recing{--sv:calc(100dvh - 162px)!important}
 }
 </style>
-<style id="hitomi-v1-17-fixes">
-/* (CSS only) ---------------------------------------------------------------------------------------------------------------------------
+<style id="hitomi-r7-17-fixes">
+/* R7.17 (CSS only) ---------------------------------------------------------------------------------------------------------------------------
    1. Record page, short portrait screens: the red button sat in the page flow and ended up under the tab bar (iPhone SE: fully hidden until you scrolled; 360x640: 29 px
-      hidden; iPad 768x1024: 33 px hidden). On those sizes it is now pinned just above the tab bar, exactly where already pins it while recording, so it no longer jumps
+      hidden; iPad 768x1024: 33 px hidden). On those sizes it is now pinned just above the tab bar, exactly where R7.13 already pins it while recording, so it no longer jumps
       when a take starts; the preview height is trimmed so the level bar, play bar and status line still fit above the button. Taller phones are unchanged. */
 @media (max-width:599px) and (orientation:portrait) and (max-height:760px){
   html body[data-tab=rec] .dock{position:fixed!important;left:0!important;right:0!important;top:auto!important;bottom:calc(64px + env(safe-area-inset-bottom,0px))!important;z-index:15;margin:0!important;padding:6px 12px!important;
@@ -5329,41 +5474,41 @@ html body #rtimer[hidden]{display:none!important}
   html body[data-tab=setup] #p-setup .suHead{flex-wrap:wrap}
 }
 </style>
-<style id="hitomi-v1-18-contrast">
-/* (CSS only): the last two contrast leftovers from the full test pass.
+<style id="hitomi-r7-18-contrast">
+/* R7.18 (CSS only): the last two contrast leftovers from the full test pass.
    1. Mix > alignment summary: the white tick on the green circle was 2.3:1; the circle is a deeper green (white 5.0:1). The paler green used for the 'In place' chip fill is unchanged.
    2. Small solid-red labels with white bold text were 4.15:1 (WCAG AA wants 4.5:1): over-limit banner, 'Recording' cell tag, drift chips, the red 'Delete?' confirm, the CLIP badge on a cell
       and the CLIP chip on the level meter. They use the same deeper red as the record button (5.4:1). Glows, borders, the meter bar and text-on-light red keep the original colours. */
 .alIc{background:#15803d}
 .clip,.cell.live .tag,.sg.bad,.sp-a button.sure,.cell .clipb,#mclip.on{background:#c92840}
 </style>
-<style id="hitomi-v1-20">
-/* (CSS only): the red CLIP badge sat top-right and covered a long cell name (e.g. 'Bass Trombone' in a 2x2 grid). It now sits directly under the name tag, so both are always readable. */
+<style id="hitomi-r7-20">
+/* R7.20 (CSS only): the red CLIP badge sat top-right and covered a long cell name (e.g. 'Bass Trombone' in a 2x2 grid). It now sits directly under the name tag, so both are always readable. */
 .cell .clipb{top:34px;right:auto;left:8px}
-/* (CSS only): the Export summary tile '1080×1080' is wider than '720×720'; on a 320 px phone (High is the default now) it pushed the page 5 px wider than the screen. */
+/* R7.21 (CSS only): the Export summary tile '1080×1080' is wider than '720×720'; on a 320 px phone (High is the default now) it pushed the page 5 px wider than the screen. */
 .xSum>div{min-width:0}
 @media (max-width:359px){.xSum b{font-size:.74rem;letter-spacing:-.02em}.xSum>div{padding:8px 2px}}
 @container (max-width:110px){.cell .clipb{top:27px;left:5px}}
 </style>
-<style id="hitomi-v1-23">
-/* (CSS only): with the Ready-check card gone the two-column Setup page starts with Project. The Layout card is much taller than Project, so it now spans two rows and the Tempo card sits under Project (before, a large empty block was left there). */
+<style id="hitomi-r7-23">
+/* R7.23 (CSS only): with the Ready-check card gone the two-column Setup page starts with Project. The Layout card is much taller than Project, so it now spans two rows and the Tempo card sits under Project (before, a large empty block was left there). */
 @media (min-width:900px),(orientation:landscape) and (max-height:500px){
   #p-setup>div.suCard:nth-of-type(2){grid-row:span 2}
 }
 </style>
-<style id="hitomi-v1-24">
-/* (CSS only): the folded 'Advanced' block under Setup > Headphone sync. */
+<style id="hitomi-r7-24">
+/* R7.24 (CSS only): the folded 'Advanced' block under Setup > Headphone sync. */
 .advFold{margin-top:6px;border-top:1px solid var(--bd)}
 .advFold>summary{list-style:none;display:flex;align-items:center;gap:8px;min-height:40px;cursor:pointer;font-size:.8rem;font-weight:800;color:var(--mu)}
 .advFold>summary::-webkit-details-marker{display:none}
 .advFold>summary::after{content:"▾";margin-left:auto;transition:transform .2s}
 .advFold[open]>summary::after{transform:rotate(180deg)}
 .advFoldBody{padding-top:2px}
-/* (CSS only): on short phones (height <= 700 px) the highlighted status box (import / alignment / warning messages) was 34 px tall and its lower edge ran 10 px under the red Record button. Less padding keeps it above the button. */
+/* R7.24 (CSS only): on short phones (height <= 700 px) the highlighted status box (import / alignment / warning messages) was 34 px tall and its lower edge ran 10 px under the red Record button. Less padding keeps it above the button. */
 @media (max-width:899px) and (orientation:portrait) and (max-height:700px){html body[data-tab=rec]:not(.recing) #msg.hi,html body[data-tab=rec]:not(.recing) #msg.ok,html body[data-tab=rec]:not(.recing) #msg.err{padding:2px 10px!important;margin-bottom:2px!important}}
 </style>
-<style id="hitomi-v1-25">
-/* (CSS only): small support for the clearer wording. */
+<style id="hitomi-r7-25">
+/* R7.25 (CSS only): small support for the clearer wording. */
 .alRow.low.soft .alChip{background:var(--bg);border-color:var(--bd);color:var(--mu)}
 #refPanel .refHead span{padding:0 9px;line-height:1.25;border:1px solid var(--bd);border-radius:999px;background:var(--bg);font-weight:700;color:var(--fg)}   /* same height as before: the strip must not grow (the status line above the Record button has 2-5 px to spare on short phones) */
 .offHint{margin:2px 0 6px;text-align:center}
@@ -5378,17 +5523,17 @@ html body #rtimer[hidden]{display:none!important}
 .sndBtns{display:flex;flex-wrap:wrap;gap:8px}
 body[data-tab=rec] #meter[data-lv=clip][data-level^="曾"]::before,body[data-tab=rec] #meter[data-lv=clip][data-level^="Clipped"]::before{max-width:none}
 @media (max-width:359px){body[data-tab=rec] #meter[data-level]::before{max-width:6.4em}}
-/* Phone landscape: the tab bar is a 66 px strip on the left, and only the Record page left room for it (padding-left 76 px). Setup, Mix and Export kept 12 px, so the first 54 px of every card was hidden under the strip (found by the layout test; present since earlier builds). */
+/* Phone landscape: the tab bar is a 66 px strip on the left, and only the Record page left room for it (padding-left 76 px). Setup, Mix and Export kept 12 px, so the first 54 px of every card was hidden under the strip (found by the layout test; present since R7.x). */
 @media (orientation:landscape) and (max-height:500px){html body main{padding-left:calc(76px + env(safe-area-inset-left,0px))}}
 </style>
-<style id="hitomi-v1-27">
-/* (CSS only) -------------------------------------------------------------------------------------------------------------------------------
+<style id="hitomi-r7-27">
+/* R7.27 (CSS only) -------------------------------------------------------------------------------------------------------------------------------
    A. Record and Mix show the preview at the same size and in the same place.
       Before, each page had its own height budget, so the preview changed size every time you switched tab (360x640 phone, 1:1: 304 px on Record, 348 px on Mix; 1280x800 screen:
       470 px and 560 px; landscape phone 278 px and 212 px). Mix now uses exactly the height Record uses at every screen size (same order, same specificity as the Record rules,
       so the same one wins).
-   B. Phones held upright (<= 599 px wide, portrait): the preview is bigger because less is stacked under it (budget: 100dvh minus 306 px for Record and Mix alike, play bar included; since . had 260 px with the Record play bar hidden).
-      - (the Record play bar is NOT hidden any more; the budget below is 100dvh minus 306 px instead of 260 px so it fits.)
+   B. Phones held upright (<= 599 px wide, portrait): the preview is bigger because less is stacked under it (budget: 100dvh minus 306 px for Record and Mix alike, play bar included; since R7.30. R7.27 had 260 px with the Record play bar hidden).
+      - (R7.30: the Record play bar is NOT hidden any more; the budget below is 100dvh minus 306 px instead of 260 px so it fits.)
       - Record: the level bar is a thinner strip (36 -> 26 px).
       - Record: "Which cells to hear" and the status sentence share one row (before: two rows, 28 + 16..32 px). Opened, the list pops up over the level bar.
       - Record: while recording, the time / bar / beat readout is 40 px instead of 52 px.
@@ -5429,7 +5574,7 @@ body[data-tab=rec] #meter[data-lv=clip][data-level^="曾"]::before,body[data-tab
   html body[data-tab=rec] .dock .recbtn{height:56px;border-radius:28px}
   html body[data-tab=rec] main{padding-bottom:calc(140px + env(safe-area-inset-bottom,0px))}
   /* the import button moves up into the header toolbar (next to the camera flip button); the row that held it would now sit under the red button */
-  html body[data-tab=rec] #impRow,html body[data-tab=rec].roomy:not(.recing) #impRow{display:none!important}   /* the older 'roomy' rule (import row inline when there is spare height) must not bring the row back; only the (i) button is left in it, and for a moment after a ratio change it sat under the red button */
+  html body[data-tab=rec] #impRow,html body[data-tab=rec].roomy:not(.recing) #impRow{display:none!important}   /* R7.28: the older 'roomy' rule (import row inline when there is spare height) must not bring the row back; only the (i) button is left in it, and for a moment after a ratio change it sat under the red button */
   html body[data-tab=rec] #recCompactTools>#imp1{display:inline-flex!important;align-items:center;width:auto!important;min-width:0;height:36px!important;min-height:36px!important;padding:0 11px!important;border-radius:999px!important;white-space:nowrap}
   html body[data-tab=rec] #recCompactTools>#imp1 .impTxt b{font-size:.8rem!important}
 }
@@ -5439,13 +5584,13 @@ body[data-tab=rec] #meter[data-lv=clip][data-level^="曾"]::before,body[data-tab
   html body[data-tab=rec] #recCompactTools>#imp1 .impTxt b::before{content:none!important}
 }
 </style>
-<script id="hitomi-v1-27-js">
-/* "Which cells to hear" (#refPanel) and the status sentence (#msg) get a shared row (#statusRow). It is display:contents everywhere except phones held upright (see the style block),
+<script id="hitomi-r7-27-js">
+/* R7.27: "Which cells to hear" (#refPanel) and the status sentence (#msg) get a shared row (#statusRow). It is display:contents everywhere except phones held upright (see the style block),
    so nothing else changes. Both nodes keep their ids and are only moved, so every existing getElementById / querySelector keeps working. */
 (function(){var r=document.getElementById('refPanel'),m=document.getElementById('msg');
   if(!r||!m||document.getElementById('statusRow'))return;
   var w=document.createElement('div');w.id='statusRow';r.parentNode.insertBefore(w,r);w.appendChild(r);w.appendChild(m)})();
-/* on phones held upright the import button (#imp1) lives in the header toolbar (#recCompactTools); everywhere else it stays in its own row (#impRow > .impTop). The node is only moved,
+/* R7.27: on phones held upright the import button (#imp1) lives in the header toolbar (#recCompactTools); everywhere else it stays in its own row (#impRow > .impTop). The node is only moved,
    so its click handler and id keep working. The (i) tips button stays with the hidden row, so on those phones the three import tips are not shown; the message after an import says what matters
    (match the BPM, alignment result). */
 (function(){var mq=window.matchMedia('(max-width:599px) and (orientation:portrait)');
@@ -5457,8 +5602,8 @@ body[data-tab=rec] #meter[data-lv=clip][data-level^="曾"]::before,body[data-tab
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
   setTimeout(place,300)})();
 </script>
-<style id="hitomi-v1-32">
-/* (CSS only). A take worth redoing: Redo is the gold main button, OK the quiet one (positions unchanged, so a thumb that learned "OK is on the left" is not surprised). */
+<style id="hitomi-r7-32">
+/* R7.32 (CSS only). A take worth redoing: Redo is the gold main button, OK the quiet one (positions unchanged, so a thumb that learned "OK is on the left" is not surprised). */
 html body #takebar.redoFirst #tbr{background:linear-gradient(135deg,var(--ac),var(--ac2))!important;color:var(--acfg)!important;border-color:transparent!important}
 html body #takebar.redoFirst #tbk{background:var(--bg)!important;color:var(--fg)!important;border:1px solid var(--bd)!important}
 /* the play-position slider was 16 px high; every other control on that bar is 36 px */
